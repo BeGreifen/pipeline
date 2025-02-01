@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Optional
 from utils.file_ops import move_file, copy_file, rename_file
 
+
 # Load configuration from config.ini
 config = configparser.ConfigParser()
 config.read("config.ini")
@@ -122,10 +123,11 @@ def process_file(file_path: str) -> None:
     Behavior:
     - Moves the file to a "working" directory for the current step.
     - Attempts to process the file using the step's dynamic processor function.
-    - On success, moves the file to the next step's folder and mirrors it in the database.
-    - On failure, renames the file indicating the error and mirrors the error state.
+    - On success, moves the file to the next step's folder and reflects it in pipeline storage.
+    - On failure, renames the file indicating the error and reflects failure in pipeline storage.
     """
     if not Path(file_path).exists():
+        print(f"File does not exist: {file_path}")
         raise FileNotFoundError(f"The file {file_path} does not exist!")
 
     # Determine current folder and working directory
@@ -144,24 +146,23 @@ def process_file(file_path: str) -> None:
         processor_func = get_processor_function(current_folder_name)
         result: bool = processor_func(working_file_path)
 
-        if result:
-            # Reflect success in database and move to the next step
-            reflect_to_pipeline_storage(current_folder, Path(file_path).name)
-            next_folder: Optional[str] = get_next_folder(current_folder)
+        # Reflect the file in pipeline storage
+        reflect_to_pipeline_storage(current_folder, working_file_path, result)
 
+        if result:
+            # Move to next folder or success folder
+            next_folder: Optional[str] = get_next_folder(current_folder)
             if next_folder:
-                # Move to the next step
                 move_file(working_file_path, str(Path(next_folder) / Path(file_path).name))
             else:
-                # If no next step exists, move to the success folder
                 move_file(working_file_path, str(Path(SUCCESS_FOLDER) / Path(file_path).name))
         else:
             # Handle processing failure
             handle_processing_error(current_folder, file_path, working_file_path)
 
     except Exception as e:
-        # Handle unexpected errors by moving the original file to the error folder
-        print(f"Unexpected error while processing file {file_path}: {str(e)}")
+        # On unexpected errors, ensure the file is moved to the error folder
+        print(f"Unexpected error while processing file {file_path}: {e}")
         move_file(file_path, str(Path(ERROR_FOLDER) / Path(file_path).name))
 
 
