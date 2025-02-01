@@ -189,3 +189,37 @@ def handle_processing_error(current_folder: str, original_file: str, working_fil
     reflect_to_pipeline_storage(current_folder, f"{Path(original_file).stem}_causing_error{Path(original_file).suffix}")
 
     print(f"Processing error detected: {causing_error_file}, {work_error_file}")
+
+def purge_pipeline_storage():
+    """
+    Deletes all files and folders inside the pipeline storage directory
+    while keeping the main directory intact.
+
+    Raises:
+        FileNotFoundError: If the pipeline storage directory doesn't exist.
+    """
+    if not PIPELINE_STORAGE_DIR:
+        raise ValueError("PIPELINE_STORAGE_DIR is not configured.")
+
+    pipeline_storage_path = Path(PIPELINE_STORAGE_DIR)
+
+    if not pipeline_storage_path.exists():
+        raise FileNotFoundError(f"Pipeline storage directory '{PIPELINE_STORAGE_DIR}' does not exist.")
+
+    try:
+        # Loop through and delete all files and folders in the pipeline storage directory
+        for item in pipeline_storage_path.iterdir():
+            if item.is_file():
+                item.unlink()  # Remove file
+            elif item.is_dir():
+                # Recursively delete directory
+                for sub_item in item.iterdir():
+                    if sub_item.is_file():
+                        sub_item.unlink()
+                    elif sub_item.is_dir():
+                        sub_item.rmdir()
+                item.rmdir()  # Remove the directory itself
+
+        print(f"Pipeline storage directory '{PIPELINE_STORAGE_DIR}' has been purged.")
+    except Exception as e:
+        print(f"Error while purging pipeline storage: {e}")
