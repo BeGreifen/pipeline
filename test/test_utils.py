@@ -172,3 +172,5 @@ def test_rename_and_move_file(file_name, tmp_path):
     assert Path(moved_file).exists()
     assert Path(moved_file).parent == destination_folder
     assert "renamed_" in Path(moved_file).name
+
+

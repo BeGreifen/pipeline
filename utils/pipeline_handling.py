@@ -2,7 +2,7 @@ import os
 import configparser
 from pathlib import Path
 from typing import Optional
-from utils.file_ops import move_file, copy_file
+from utils.file_ops import move_file, copy_file, rename_file
 
 # Load configuration from config.ini
 config = configparser.ConfigParser()
@@ -80,19 +80,36 @@ def create_working_dir(folder_path: str) -> str:
     return working_dir
 
 
-def reflect_to_pipeline_storage(current_folder: str, filename: str) -> None:
+def reflect_to_pipeline_storage(current_folder: str, file_path: str, result: bool) -> None:
     """
-    Save a copy of the file to the corresponding database folder,
-    maintaining the pipeline's folder structure.
+    Reflects the file into the appropriate location inside the pipeline storage directory
+    after processing has been completed.
 
     Args:
-        current_folder (str): The current pipeline folder.
-        filename (str): The name of the file to reflect into the database.
-
+        current_folder (str): The current pipeline step folder.
+        file_path (str): The full path of the file being processed.
+        result (bool): Indicates if the processing was successful (True) or failed (False).
     """
-    db_folder: str = str(Path(PIPELINE_STORAGE_DIR) / Path(current_folder).name)
-    Path(db_folder).mkdir(parents=True, exist_ok=True)
-    copy_file(str(Path(current_folder) / filename), str(Path(db_folder) / filename))
+    try:
+        # Create and ensure pipeline storage directory for the current folder
+        storage_folder = Path(PIPELINE_STORAGE_DIR) / Path(current_folder).name
+        storage_folder.mkdir(parents=True, exist_ok=True)
+
+        file_name = Path(file_path).name
+
+        if result:
+            # If processing is successful, copy the file as is
+            copy_file(file_path, str(storage_folder))
+            print(f"File successfully reflected to storage: {file_name}")
+        else:
+            # If processing fails, append "_causing_error" to the file name
+            error_file_name = f"{Path(file_path).stem}_causing_error{Path(file_path).suffix}"
+            copy_file(file_path, str(storage_folder))
+            rename_file(str(storage_folder / file_name), error_file_name)
+            print(f"Error file reflected to storage: {error_file_name}")
+    except Exception as e:
+        # Handle any exceptions during reflection
+        print(f"Error reflecting file to pipeline storage: {file_path}. Exception: {e}")
 
 
 def process_file(file_path: str) -> None:
