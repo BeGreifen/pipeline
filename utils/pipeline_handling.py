@@ -10,7 +10,7 @@ config.read("config.ini")
 
 # Configuration parameters
 BASE_DIR: str = config["PIPELINE"].get("base_dir", "")
-DATABASE_DIR: str = config["PIPELINE"].get("database_dir", "")
+PIPELINE_STORAGE_DIR: str = config["PIPELINE"].get("pipeline_storage_dir", "")
 FUNCTION_PREFIX: str = config["PIPELINE"].get("prefix", "pipeline_step_")
 SUCCESS_FOLDER: str = config["PIPELINE"].get("success_folder", "")
 ERROR_FOLDER: str = config["PIPELINE"].get("error_folder", "")
@@ -80,7 +80,7 @@ def create_working_dir(folder_path: str) -> str:
     return working_dir
 
 
-def reflect_to_database(current_folder: str, filename: str) -> None:
+def reflect_to_pipeline_storage(current_folder: str, filename: str) -> None:
     """
     Save a copy of the file to the corresponding database folder,
     maintaining the pipeline's folder structure.
@@ -90,7 +90,7 @@ def reflect_to_database(current_folder: str, filename: str) -> None:
         filename (str): The name of the file to reflect into the database.
 
     """
-    db_folder: str = str(Path(DATABASE_DIR) / Path(current_folder).name)
+    db_folder: str = str(Path(PIPELINE_STORAGE_DIR) / Path(current_folder).name)
     Path(db_folder).mkdir(parents=True, exist_ok=True)
     copy_file(str(Path(current_folder) / filename), str(Path(db_folder) / filename))
 
@@ -129,7 +129,7 @@ def process_file(file_path: str) -> None:
 
         if result:
             # Reflect success in database and move to the next step
-            reflect_to_database(current_folder, Path(file_path).name)
+            reflect_to_pipeline_storage(current_folder, Path(file_path).name)
             next_folder: Optional[str] = get_next_folder(current_folder)
 
             if next_folder:
@@ -169,6 +169,6 @@ def handle_processing_error(current_folder: str, original_file: str, working_fil
     # Append `_causing_error` to the original file and reflect in the database
     causing_error_file = str(
         Path(original_file).with_name(f"{Path(original_file).stem}_causing_error{Path(original_file).suffix}"))
-    reflect_to_database(current_folder, f"{Path(original_file).stem}_causing_error{Path(original_file).suffix}")
+    reflect_to_pipeline_storage(current_folder, f"{Path(original_file).stem}_causing_error{Path(original_file).suffix}")
 
     print(f"Processing error detected: {causing_error_file}, {work_error_file}")
