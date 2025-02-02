@@ -5,8 +5,8 @@ import shutil
 
 # Get the logger instance
 logger = logging_setup.get_logger(
-    logger_name="pipeline_logger",
-    logfile_name="log.log",
+    logger_name="file_ops",
+    logfile_name="native_file_ops.log",
     console_level=logging.INFO,
     file_level=logging.DEBUG
 )
