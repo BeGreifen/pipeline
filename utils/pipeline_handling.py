@@ -3,7 +3,16 @@ import configparser
 from pathlib import Path
 from typing import Optional
 from utils.file_ops import move_file, copy_file, rename_file
+import logging
+import setup.logging_setup as logging_setup
 
+# Get the logger instance
+logger = logging_setup.get_logger(
+    logger_name="pipeline_handling",
+    logfile_name="pipeline_handling.log",
+    console_level=logging.INFO,
+    file_level=logging.DEBUG
+)
 
 # Load configuration from config.ini
 config = configparser.ConfigParser()
@@ -63,6 +72,7 @@ def get_processor_function(folder_name: str):
         module_ref = __import__("processors", fromlist=[processor_function_name])
         return getattr(module_ref, processor_function_name)
     except (ImportError, AttributeError) as e:
+        logger.error(f"Processor function {processor_function_name} not found: {e}")
         raise ImportError(f"Processor function {processor_function_name} not found: {e}")
 
 
@@ -101,17 +111,17 @@ def reflect_to_pipeline_storage(current_folder: str, file_path: str, result: boo
         if result:
             # If processing is successful, copy the file as is
             copy_file(file_path, str(storage_folder))
-            print(f"File successfully reflected to storage: {file_name}")
+            logger.info(f"File successfully reflected to storage: {file_name}")
         else:
             # If processing fails, append "_causing_error" to the file name
             error_file_name = f"{Path(file_path).stem}_causing_error{Path(file_path).suffix}"
             copy_file(file_path, str(storage_folder))
             rename_file(str(storage_folder / file_name), error_file_name)
-            print(f"Error file reflected to storage: {error_file_name}")
+            logger.info(f"Error file reflected to storage: {error_file_name}")
     except Exception as e:
         # Handle any exceptions during reflection
-        print(f"Error reflecting file to pipeline storage: {file_path}. Exception: {e}")
-
+        logger.error(f"Error reflecting file to pipeline storage: {file_path}. Exception: {e}")
+        raise
 
 def process_file(file_path: str) -> None:
     """
@@ -127,7 +137,7 @@ def process_file(file_path: str) -> None:
     - On failure, renames the file indicating the error and reflects failure in pipeline storage.
     """
     if not Path(file_path).exists():
-        print(f"File does not exist: {file_path}")
+        logger.error(f"File does not exist: {file_path}")
         raise FileNotFoundError(f"The file {file_path} does not exist!")
 
     # Determine current folder and working directory
@@ -162,7 +172,7 @@ def process_file(file_path: str) -> None:
 
     except Exception as e:
         # On unexpected errors, ensure the file is moved to the error folder
-        print(f"Unexpected error while processing file {file_path}: {e}")
+        logger.error(f"Unexpected error while processing file {file_path}: {e}")
         move_file(file_path, str(Path(ERROR_FOLDER) / Path(file_path).name))
 
 
@@ -189,7 +199,7 @@ def handle_processing_error(current_folder: str, original_file: str, working_fil
         Path(original_file).with_name(f"{Path(original_file).stem}_causing_error{Path(original_file).suffix}"))
     reflect_to_pipeline_storage(current_folder, f"{Path(original_file).stem}_causing_error{Path(original_file).suffix}")
 
-    print(f"Processing error detected: {causing_error_file}, {work_error_file}")
+    logger.info(f"Processing error detected: {causing_error_file}, {work_error_file}")
 
 def purge_pipeline_storage():
     """
@@ -221,6 +231,7 @@ def purge_pipeline_storage():
                         sub_item.rmdir()
                 item.rmdir()  # Remove the directory itself
 
-        print(f"Pipeline storage directory '{PIPELINE_STORAGE_DIR}' has been purged.")
+        logger.info(f"Pipeline storage directory '{PIPELINE_STORAGE_DIR}' has been purged.")
     except Exception as e:
-        print(f"Error while purging pipeline storage: {e}")
+        logger.error(f"Error while purging pipeline storage: {e}")
+        raise
