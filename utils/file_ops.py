@@ -12,7 +12,6 @@ logger = logging_setup.get_logger(
 )
 
 
-
 def create_directory(directory_path: str) -> Path:
     """
     Ensure the directory exists; if not, create it.
