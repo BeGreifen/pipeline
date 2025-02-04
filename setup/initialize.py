@@ -8,7 +8,7 @@ import logging
 # This helps to keep the same logger instance in all functions across the project.
 # All config parameters in [DIRECTORIES] and [FILES] are changed to absolute paths
 
-project_name = 'Master_Thesis'
+project_name = 'pipeline'
 
 # Get production configuration
 config: configparser.ConfigParser = config_setup.get_prod_config()
