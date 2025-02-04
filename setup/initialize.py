@@ -8,10 +8,12 @@ import logging
 # This helps to keep the same logger instance in all functions across the project.
 # All config parameters in [DIRECTORIES] and [FILES] are changed to absolute paths
 
-project_name = 'pipeline'
 
 # Get production configuration
 config: configparser.ConfigParser = config_setup.get_prod_config()
+
+# set the project name dynamically from base dir
+project_name = os.path.basename(os.path.dirname(__file__))
 
 # Construct the log file path
 log_directory = config.get("DIRECTORIES", "logs")
