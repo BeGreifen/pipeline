@@ -1,3 +1,8 @@
+:: This batch file sets up a skeleton directory structure for a multi-step pipeline.
+:: It creates the necessary folders for pipeline steps, database storage, process scripts,
+:: logs, and separate areas for completed work and error handling.
+:: Running this file ensures the environment is ready for all project-related operations.
+
 @echo off
 
 :: Create 'pipeline' directory and its subfolders
