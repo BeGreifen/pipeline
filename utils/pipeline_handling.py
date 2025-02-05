@@ -1,15 +1,30 @@
-import os
-import configparser
-from pathlib import Path
-from typing import Optional
-from utils.file_ops import move_file, copy_file, rename_file
-import logging
-import setup.logging_setup as logging_setup
+# ==================== Standard library imports ====================
+import os  # Provides operating system dependent functionality
+import logging  # Offers logging operations
+import configparser  # Enables handling of configuration files
+from pathlib import Path  # Simplifies file path operations
+from typing import Optional  # Supplies type hinting for optional parameters
+
+# =================== Local module (project) imports ===================
+from setup import config_setup  # Interfaces with config.ini functionalities
+import setup.logging_setup as logging_setup  # Manages logging configuration
+from utils.file_ops import move_file, copy_file, rename_file  # Provides file operations
+
+
+# Dynamically obtain the logger name from the script name (without extension).
+config = config_setup.get_prod_config()
+script_name: str = Path(__file__).stem
+
+
+# Build the absolute path for the log file
+logs_dir: Path = logging_setup.configure_logs_directory()
+logfile_path = os.path.join(logs_dir, f"{script_name}.log")
+
 
 # Get the logger instance
 logger = logging_setup.get_logger(
-    logger_name="pipeline_handling",
-    logfile_name="pipeline_handling.log",
+    logger_name=script_name,
+    logfile_name=logfile_path,
     console_level=logging.INFO,
     file_level=logging.DEBUG
 )

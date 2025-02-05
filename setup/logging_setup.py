@@ -5,6 +5,8 @@ import os
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import configparser
+from setup import config_setup
 
 def get_logger(logger_name, **kwargs):
     """
@@ -88,3 +90,16 @@ class SMTPHandler(logging.Handler):
             server.quit()
         except Exception:
             self.handleError(record)
+
+def configure_logs_directory() -> Path:
+    """
+    Ensures that a logs directory exists and returns its absolute path.
+
+    Returns:
+        Path: Absolute path to the logs directory.
+    """
+    # Retrieve logs directory from your config
+    config: configparser.ConfigParser = config_setup.get_prod_config()
+    logs_path: Path = Path(config.get("DIRECTORIES", "logs")).resolve()
+    logs_path.mkdir(parents=True, exist_ok=True)  # create if non-existent
+    return logs_path

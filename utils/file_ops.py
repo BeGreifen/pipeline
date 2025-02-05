@@ -7,24 +7,20 @@ import setup.logging_setup as logging_setup # Function to initialise logger
 from setup import config_setup  # Interfaces with config.ini functionalities
 
 
-# Read config.ini (using your existing config_setup)
+# Dynamically obtain the logger name from the script name (without extension).
 config = config_setup.get_prod_config()
-
-# Extract the logs directory from [DIRECTORIES] in config.ini
-logs_dir = config.get("DIRECTORIES", "logs")
-# Check if logs_dir is empty or does not exist; fallback to base directory
-if not logs_dir or not Path(logs_dir).is_dir():
-    logs_dir = "."
+script_name: str = Path(__file__).stem
 
 
 # Build the absolute path for the log file
-logfile_path = os.path.join(logs_dir, "native_file_ops.log")
+logs_dir: Path = logging_setup.configure_logs_directory()
+logfile_path = os.path.join(logs_dir, f"{script_name}.log")
 
 
 # Get the logger instance
 logger = logging_setup.get_logger(
-    logger_name="file_ops",
-    logfile_name="native_file_ops.log",
+    logger_name=script_name,
+    logfile_name=logfile_path,
     console_level=logging.INFO,
     file_level=logging.DEBUG
 )
