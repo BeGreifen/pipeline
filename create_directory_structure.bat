@@ -9,11 +9,12 @@
 mkdir pipeline
 mkdir pipeline\10_example_step_one
 mkdir pipeline\20_example_step_two
+mkdir Pipeline\99_success
 
-:: Create 'database' directory and its subfolders
-mkdir database
-mkdir database\10_example_step_one
-mkdir database\20_example_step_two
+:: Create 'pipeline_storeage' directory and its subfolders
+mkdir pipeline_storage
+mkdir pipeline_storage\10_example_step_one
+mkdir pipeline_storage\20_example_step_two
 
 :: Create 'processes' directory 
 mkdir processes
@@ -25,16 +26,9 @@ echo # Placeholder Python script > processes\pipeline_step_20_example_step_two.p
 :: Create the 'logs' directory
 mkdir logs
 
-:: Create a top-level 'Pipeline' directory with a '99_success' subfolder
-mkdir Pipeline
-mkdir Pipeline\99_success
-
 :: Create a 'Processed' directory for error files
 mkdir Processed
 mkdir Processed\Error
 
-:: Create 'Pipeline_Storage'
-mkdir Pipeline_Storage
-
 echo Directory structure created successfully!
-pause
+timeout /t 10 >nul
