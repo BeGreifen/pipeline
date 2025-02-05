@@ -3,10 +3,9 @@ import os
 import shutil
 from pathlib import Path
 
-import setup.logging_setup as logging_setup #function to initialise logger
+import setup.logging_setup as logging_setup # Function to initialise logger
+from setup import config_setup  # Interfaces with config.ini functionalities
 
-
-from setup import config_setup
 
 # Read config.ini (using your existing config_setup)
 config = config_setup.get_prod_config()
