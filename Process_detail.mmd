@@ -1,0 +1,23 @@
+graph TD
+    Start(("Process by Step"))
+
+        CheckForFiles{"Check <br> if a file is available <br> for processing"}
+        FileAvailable["Start Processing File"]
+        FileNO["Wait for File"]
+        StepFunction{"Call Specific Function <br> Based on Current Step"}
+        CopyToStorage["Copy Original Files to 'pipeline_storage/' Folder"]
+
+        MoveToNextStep["Move Work Files to Next Step"]
+        RenameFileOfWorkPath_with_error_extension["Mark File of Work Path with Error extension "]
+        MoveToError["Move Files <br> from process path and <br> work path to 'Error/' Folder"]
+
+
+        Start --> CheckForFiles
+        CheckForFiles --> FileAvailable
+        CheckForFiles --> FileNO
+        FileNO --> CheckForFiles
+        FileAvailable --> StepFunction
+        StepFunction --> |success|CopyToDatabase
+        StepFunction --> |failure|RenameFileOfWorkPath_with_error_extension
+        RenameFileOfWorkPath_with_error_extension --> MoveToError
+        CopyToDatabase --> MoveToNextStep
