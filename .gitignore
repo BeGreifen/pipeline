@@ -1,0 +1,51 @@
+# Byte-compiled files and caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+sdist/
+eggs/
+
+# Virtual environments
+env/
+venv/
+ENV/
+.venv/
+venv.bak/
+*.virtualenv
+
+# IDEs / tools
+.idea/
+.vscode/
+*.iml
+
+# Pytest and coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+
+# Logs and local data
+*.log
+*.sqlite3
+*.db
+dump.rdb
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Jupyter notebooks checkpoints
+.ipynb_checkpoints/
+
+# Other backups or temp files
+*.bak
+*.tmp
+*.swp
