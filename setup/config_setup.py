@@ -20,7 +20,7 @@ def get_config(config_name: str) -> configparser.ConfigParser:
     :param config_name:
     :return:
     """
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
     config.read(config_name)
     return config
 
