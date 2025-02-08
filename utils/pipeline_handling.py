@@ -57,6 +57,7 @@ def log_exceptions_with_args(func):
 PROCESSES_DIR: Path = Path(config["PIPELINE"].get("processes_dir", "")).resolve()
 logger.info(f"path to processes {PROCESSES_DIR}")
 BASE_DIR: Path = Path(config["PIPELINE"].get("base_dir", "")).parent.resolve()
+PIPELINE_DIR: Path = Path(config["PIPELINE"].get("pipeline_dir", "")).resolve()
 PIPELINE_STORAGE_DIR: Path = Path(config["PIPELINE"].get("pipeline_storage_dir", "")).resolve()
 SUCCESS_DIR: Path = Path(config["PIPELINE"].get("success_dir", "")).resolve()
 ERROR_DIR: Path = Path(config["PIPELINE"].get("error_dir", "")).resolve()
@@ -81,8 +82,8 @@ def get_next_dir(current_dir: str) -> Optional[str]:
     # Get all sibling folders in alphabetical order, excluding "working"
     sibling_dir = sorted(
         folder
-        for folder in os.listdir(BASE_DIR)
-        if os.path.isdir(os.path.join(BASE_DIR, folder)) and folder != "working"
+        for folder in os.listdir(PIPELINE_DIR)
+        if os.path.isdir(os.path.join(PIPELINE_DIR, folder))
     )
     logger.debug(f"sibling_dir {sibling_dir}")
 
