@@ -1,4 +1,5 @@
 import logging
+import functools
 import utils.file_ops as file_ops
 from pathlib import Path
 import setup.logging_setup as logging_setup # Function to initialise logger
@@ -22,19 +23,44 @@ logger = logging_setup.get_logger(
             file_level=logging.DEBUG
         )
 
+def log_exceptions_with_args(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            # Log the error with function name and parameter details.
+            logger.error(
+                "Exception in function '%s' with args: %s, kwargs: %s",
+                func.__name__,
+                args,
+                kwargs,
+                exc_info=True  # This logs the traceback as well.
+            )
+            raise  # Re-raise the exception after logging.
+    return wrapper
+
+
 # Placeholder Python script
+@log_exceptions_with_args
 def main(file_path: str):
     print(f"processing file {file_path}")
+    print(f"the logs are stored: {logfile_path}")
+    logger.info(f"logger started")
+
     file_path = Path(file_path).resolve()
-    processed_dir = file_path.parent / "processed/"
+    logger.debug(f"file path: {file_path}")
+
+    processed_dir = file_path.parent.parent / "processed/"
+    logger.debug(f"file path: {file_path}")
     try:
-        logging.info(f"process {script_name} started")
-        logging.info(f"processing file {file_path}")
+        logger.info(f"process {script_name} started")
+        logger.info(f"processing file {file_path} and moving to {processed_dir}")
         file_ops.move_file(str(Path(file_path)), str(processed_dir))
-        logging.info(f"process {script_name} completed")
+        logger.info(f"process {script_name} completed")
         return True
     except Exception as e:
-        logging.error(f"Error processing file {file_path}: {e}")
+        logger.error(f"Error processing file {file_path}: {e}")
         raise
 
 if __name__ == "__main__":
