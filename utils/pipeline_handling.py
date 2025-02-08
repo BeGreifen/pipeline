@@ -183,7 +183,7 @@ def reflect_to_pipeline_storage(current_dir: str, file_path: str, result: bool =
 
     # 1) Extract the “parent” directory name from the original file’s path
     #    (this helps capture dynamic provenance).
-    parent_name: str = original_path.parent.name  # e.g., "step3" from ".../step3/processed/"
+    parent_name: str = Path(current_dir).name  # e.g., "step3" from ".../step3/processed/"
     logger.info(f"parent_name {parent_name}")
 
     # 2) Prepare the pipeline storage subdirectory: we mirror the pipeline structure
@@ -199,8 +199,12 @@ def reflect_to_pipeline_storage(current_dir: str, file_path: str, result: bool =
 
     # 3) Include both the parent directory name and a timestamp in the new file name.
     file_status_derived_of_path: str = Path(file_path).parent.name
+    step_name_derived_of_current_dir:str = Path(current_dir).parent.name
+    status = file_status_derived_of_path if file_status_derived_of_path != parent_name else ""
+
+        
     timestamp_str: str = generate_timestamp()
-    new_file_name: str = f"{original_path.stem}_{file_status_derived_of_path}_{timestamp_str}{original_path.suffix}"
+    new_file_name: str = f"{original_path.stem}_{status}_{timestamp_str}{original_path.suffix}"
     logger.info(f"Generated new file name: {new_file_name}")
 
     # 4) copy the file into the pipeline storage subdirectory
@@ -270,7 +274,8 @@ def process_file(file_path: str) -> None:
                 print(f"the pipeline process '{current_dir_path.name}' does not have a function named '{PROCESS_FILE_FUNCTION_NAME}'.")
 
         # 4) Reflect success/failure in pipeline storage
-        reflect_to_pipeline_storage(str(current_dir_path), str(file_path), result)
+        reflect_to_pipeline_storage(str(current_dir_path), str(file_path), result) # copy step original to pipeline_storage
+        reflect_to_pipeline_storage(str(current_dir_path), str(processed_file_path), result) # copy step result to pipeline_storage
 
         if result:
             # If processing succeeded, move to next or "processed" folder
@@ -281,7 +286,10 @@ def process_file(file_path: str) -> None:
                 move_file(str(processed_file_path), str(processed_dir))
         else:
             # If processing failed, move to "error" folder (possibly renaming)
-            move_file(str(working_file_path), str(error_dir / f"{file_name}.err"))
+            error_file_path = str(error_dir / f"{file_name}.err")
+            move_file(str(working_file_path), str(error_file_path))
+            reflect_to_pipeline_storage(str(current_dir_path), str(processed_file_path),
+                                        result)  # copy step result to pipeline_storage
 
     except Exception as e:
         # On any exception, log and move the original file to "error"
