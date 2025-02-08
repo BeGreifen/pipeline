@@ -84,6 +84,7 @@ def get_next_dir(current_dir: str) -> Optional[str]:
         for folder in os.listdir(BASE_DIR)
         if os.path.isdir(os.path.join(BASE_DIR, folder)) and folder != "working"
     )
+    logger.debug(f"sibling_dir {sibling_dir}")
 
     # Get the current folder's index
     current_dir_name = Path(current_dir).name
@@ -127,7 +128,7 @@ def get_processor_function(step_name: str):
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module) #"execute" the module to get all attributes and functions -  this doesn't start any function of the module, just initiates it
             module_attribs = getattr(module, PROCESS_FILE_FUNCTION_NAME, None)
-            logging.info(f"****** module {module} with attribs {module_attribs} loaded")
+            logger.info(f"****** module {module} with attribs {module_attribs} loaded")
         except (ImportError, ModuleNotFoundError) as err:
             # Handle or log the exception as needed
             logger.error(f"Failed to import {PROCESS_FILE_FUNCTION_NAME} from module '{process_file_name}': {err}")
