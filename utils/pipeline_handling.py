@@ -170,6 +170,7 @@ def reflect_to_pipeline_storage(current_dir: str, file_path: str, result: bool) 
         logger.error(f"Error reflecting file to pipeline storage: {file_path}. Exception: {e}")
         raise
 
+
 def process_file(file_path: str) -> None:
     """
     Processes a file through the pipeline with error handling and database mirroring.
@@ -193,55 +194,55 @@ def process_file(file_path: str) -> None:
     # Extract just the file name
     file_name = Path(file_path).name
 
-    # try:
-    # 1) Copy the file into the "working" folder
-    #    Pass only the folder to "copy_file"
-    copy_file(file_path, str(working_dir))
+    try:
+        # 1) Copy the file into the "working" folder
+        #    Pass only the folder to "copy_file"
+        copy_file(file_path, str(working_dir))
 
-    # 2) Build the file’s new path after copying
-    working_file_path = working_dir / file_name
+        # 2) Build the file’s new path after copying
+        working_file_path = working_dir / file_name
 
-    # 3) Retrieve & execute the appropriate processor
-    logger.info(f"processing {file_name} in {current_dir_path}")
-    processor_module = get_processor_function(current_dir_path.name)
-    logger.info(f"found processor {processor_module}")
+        # 3) Retrieve & execute the appropriate processor
+        logger.info(f"processing {file_name} in {current_dir_path}")
+        processor_module = get_processor_function(current_dir_path.name)
+        logger.info(f"found processor {processor_module}")
 
-    # execute function from processor_module
-    result = False
-    if processor_module:
-        if hasattr(processor_module, PROCESS_FILE_FUNCTION_NAME):
-            # Retrieve the function object
-            func_to_call = getattr(processor_module, PROCESS_FILE_FUNCTION_NAME)
-            # Optionally, check if it is callable
-            if callable(func_to_call):
-                try:
-                    # Execute the function; pass any parameters as needed.
-                    result = func_to_call()  # or func_to_call(args...) if parameters are required
-                except Exception as e:
-                    print(f"An error occurred while executing {PROCESS_FILE_FUNCTION_NAME}: {e}")
+        # execute function from processor_module
+        result = False
+        if processor_module:
+            if hasattr(processor_module, PROCESS_FILE_FUNCTION_NAME):
+                # Retrieve the function object
+                func_to_call = getattr(processor_module, PROCESS_FILE_FUNCTION_NAME)
+                # Optionally, check if it is callable
+                if callable(func_to_call):
+                    try:
+                        # Execute the function; pass any parameters as needed.
+                        result = func_to_call(file_path)  # or func_to_call(args...) if parameters are required
+                    except Exception as e:
+                        print(f"An error occurred while executing {PROCESS_FILE_FUNCTION_NAME}: {e}")
+                else:
+                    print(f"Attribute {PROCESS_FILE_FUNCTION_NAME} exists but is not callable.")
             else:
-                print(f"Attribute {PROCESS_FILE_FUNCTION_NAME} exists but is not callable.")
+                print(f"the pipeline process '{current_dir_path.name}' does not have a function named '{PROCESS_FILE_FUNCTION_NAME}'.")
+
+        # 4) Reflect success/failure in pipeline storage
+        reflect_to_pipeline_storage(str(current_dir_path), str(working_file_path), result)
+
+        if result:
+            # If processing succeeded, move to next or "processed" folder
+            next_dir = get_next_dir(str(current_dir_path))
+            if next_dir:
+                move_file(str(working_file_path), str(next_dir))
+            else:
+                move_file(str(working_file_path), str(processed_dir))
         else:
-            print(f"the pipeline process '{current_dir_path.name}' does not have a function named '{PROCESS_FILE_FUNCTION_NAME}'.")
+            # If processing failed, move to "error" folder (possibly renaming)
+            move_file(str(working_file_path), str(error_dir / f"{file_name}.err"))
 
-    # 4) Reflect success/failure in pipeline storage
-    reflect_to_pipeline_storage(str(current_dir_path), str(working_file_path), result)
-
-    if result:
-        # If processing succeeded, move to next or "processed" folder
-        next_dir = get_next_dir(str(current_dir_path))
-        if next_dir:
-            move_file(str(working_file_path), str(next_dir))
-        else:
-            move_file(str(working_file_path), str(processed_dir))
-    else:
-        # If processing failed, move to "error" folder (possibly renaming)
-        move_file(str(working_file_path), str(error_dir / f"{file_name}.err"))
-
-    # except Exception as e:
+    except Exception as e:
         # On any exception, log and move the original file to "error"
-    #    logger.error(f"Unexpected error while processing file {file_path}: {e}")
-    #   move_file(file_path, str(error_dir / f"{file_name}.err"))
+        logger.error(f"Unexpected error while processing file {file_path}: {e}")
+        move_file(file_path, str(error_dir / f"{file_name}.err"))
 
 
 
