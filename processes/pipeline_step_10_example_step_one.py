@@ -46,22 +46,24 @@ def log_exceptions_with_args(func):
 def main(file_path: str):
     print(f"processing file {file_path}")
     print(f"the logs are stored: {logfile_path}")
-    logger.info(f"logger started")
+    logger.debug(f"logger started")
 
     file_path = Path(file_path).resolve()
     logger.debug(f"file path: {file_path}")
 
     processed_dir = file_path.parent.parent / "processed/"
     logger.debug(f"file path: {file_path}")
-    try:
-        logger.info(f"process {script_name} started")
-        logger.info(f"processing file {file_path} and moving to {processed_dir}")
-        file_ops.move_file(str(Path(file_path)), str(processed_dir))
-        logger.info(f"process {script_name} completed")
-        return True
-    except Exception as e:
-        logger.error(f"Error processing file {file_path}: {e}")
-        raise
+
+    logger.info(f"process {script_name} for {file_path} started")
+
+    logger.debug(f"processing file {file_path} and moving to {processed_dir}")
+    # code to process file here:
+    # ...
+    # finally move processed file to the process_dir of the stage
+    file_ops.move_file(str(Path(file_path)), str(processed_dir))
+    logger.info(f"process {script_name} completed")
+    return True
+
 
 if __name__ == "__main__":
     print("This is a placeholder script.")
