@@ -87,13 +87,18 @@ def get_next_dir(original_file_of_this_step_path: str) -> Optional[str]:
     )
     logger.debug(f"sibling_dir {sibling_dir}")
 
-    # Get the current folder's index
-    current_dir_name = Path(original_file_of_this_step_path).name
-    current_index = sibling_dir.index(original_file_of_this_step_path)
+    # Retrieve the parent directory name from the full file path
+    current_dir_name = Path(original_file_of_this_step_path).parent.name
+    logger.debug(f"current_dir_name {current_dir_name}")
 
-    # Return the next folder if it exists, else None
+    # Get the current folder's index
+    current_index = sibling_dir.index(current_dir_name)
+    logger.debug(f"current_index {current_index}")
+
+    # Return the next folder’s path if it exists, otherwise None
     if current_index + 1 < len(sibling_dir):
-        return str(Path(BASE_DIR) / sibling_dir[current_index + 1])
+        logger.debug(f"return {str(PIPELINE_DIR / sibling_dir[current_index + 1])}")
+        return str(PIPELINE_DIR / sibling_dir[current_index + 1])
     return None
 
 
@@ -184,16 +189,16 @@ def reflect_to_pipeline_storage(current_dir: str, file_path: str, result: bool =
     # 1) Extract the “parent” directory name from the original file’s path
     #    (this helps capture dynamic provenance).
     parent_name: str = Path(current_dir).name  # e.g., "step3" from ".../step3/processed/"
-    logger.info(f"parent_name {parent_name}")
+    logger.debug(f"parent_name {parent_name}")
 
     # 2) Prepare the pipeline storage subdirectory: we mirror the pipeline structure
     #    by creating a subdir for the current_dir.
     #    (Replace this path with your actual config lookup if needed.)
     pipeline_storage_base: Path = PIPELINE_STORAGE_DIR  # from config
-    logger.info(f"pipeline_storage_base {pipeline_storage_base}")
+    logger.debug(f"pipeline_storage_base {pipeline_storage_base}")
 
     pipeline_storage_subdir: Path = pipeline_storage_base / parent_name
-    logger.info(f"pipeline_storage_subdir {pipeline_storage_subdir}")
+    logger.debug(f"pipeline_storage_subdir {pipeline_storage_subdir}")
 
     create_directory(str(pipeline_storage_subdir))
 
@@ -205,7 +210,7 @@ def reflect_to_pipeline_storage(current_dir: str, file_path: str, result: bool =
         
     timestamp_str: str = generate_timestamp()
     new_file_name: str = f"{original_path.stem}_{status}_{timestamp_str}{original_path.suffix}"
-    logger.info(f"Generated new file name: {new_file_name}")
+    logger.debug(f"Generated new file name: {new_file_name}")
 
     # 4) copy the file into the pipeline storage subdirectory
     #    and assign a temporary name identical to the original.
@@ -213,7 +218,7 @@ def reflect_to_pipeline_storage(current_dir: str, file_path: str, result: bool =
 
     # 5) Rename the moved file to include subdir + timestamp
     final_path: Path = rename_file(str(copy_file_path), new_file_name)
-    logger.info(f"Reflected file into pipeline storage: {final_path}")
+    logger.debug(f"Reflected file into pipeline storage: {final_path}")
 
 
 @log_exceptions_with_args
