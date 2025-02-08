@@ -4,6 +4,9 @@ import utils.file_ops as file_ops
 from pathlib import Path
 import setup.logging_setup as logging_setup # Function to initialise logger
 from setup import config_setup  # Interfaces with config.ini functionalities
+import random
+import time
+
 
 # Dynamically obtain the logger name from the script name (without extension).
 config = config_setup.get_prod_config()
@@ -59,6 +62,12 @@ def main(file_path: str):
     # code to process file here:
     # ...
     logger.debug(f"processing file {file_path} ")
+    temp_var: int = random.randint(0, 5)
+    logger.debug(f"Waiting for {temp_var} second(s)")
+    # Append a line to the file in file_path indicating the process step and wait time.
+    with open(str(file_path), "a", encoding="utf-8") as temp_file:
+        temp_file.write(f"Process step: waited for {temp_var} second(s)\n")
+    time.sleep(float(temp_var))
     # ...
     # finally move processed file to the process_dir of the stage
     file_ops.move_file(str(Path(file_path)), str(processed_dir))
