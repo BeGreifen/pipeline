@@ -214,7 +214,7 @@ def reflect_to_pipeline_storage(current_dir: str, file_path: str, result: bool =
 
     # 4) copy the file into the pipeline storage subdirectory
     #    and assign a temporary name identical to the original.
-    copy_file_path: Path = move_file(str(original_path), str(pipeline_storage_subdir))
+    copy_file_path: Path = copy_file(str(original_path), str(pipeline_storage_subdir))
 
     # 5) Rename the moved file to include subdir + timestamp
     final_path: Path = rename_file(str(copy_file_path), new_file_name)
