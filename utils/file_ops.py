@@ -2,6 +2,8 @@ import logging
 import os
 import shutil
 from pathlib import Path
+from datetime import datetime
+
 
 import setup.logging_setup as logging_setup # Function to initialise logger
 from setup import config_setup  # Interfaces with config.ini functionalities
@@ -24,6 +26,12 @@ logger = logging_setup.get_logger(
     console_level=logging.INFO,
     file_level=logging.DEBUG
 )
+
+def generate_timestamp() -> str:
+    """
+    Return the current date and time in a clear format.
+    """
+    return datetime.now().strftime("%Y%m%d_%H%M%S")
 
 
 def create_directory(directory_path: str) -> Path:
