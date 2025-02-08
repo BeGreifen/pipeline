@@ -5,6 +5,7 @@ import importlib
 import importlib.util # for the absolut path handling
 import functools
 
+from . import cache_function
 from pathlib import Path  # Simplifies file path operations
 from typing import Optional  # Supplies type hinting for optional parameters
 
@@ -53,6 +54,7 @@ def log_exceptions_with_args(func):
     return wrapper
 
 
+
 # create global Abs Path Constants from Config
 PROCESSES_DIR: Path = Path(config["PIPELINE"].get("processes_dir", "")).resolve()
 logger.info(f"path to processes {PROCESSES_DIR}")
@@ -66,7 +68,7 @@ ERROR_DIR: Path = Path(config["PIPELINE"].get("error_dir", "")).resolve()
 PROCESS_FILE_PREFIX: str = config["PIPELINE"].get("process_file_prefix", "pipeline_step_")
 PROCESS_FILE_FUNCTION_NAME: str = config["PIPELINE"].get("process_file_function_name", "process_this")
 
-
+@cache_function(maxsize=256)
 @log_exceptions_with_args
 def get_next_dir(original_file_of_this_step_path: str) -> Optional[str]:
     """
@@ -101,7 +103,7 @@ def get_next_dir(original_file_of_this_step_path: str) -> Optional[str]:
         return str(PIPELINE_DIR / sibling_dir[current_index + 1])
     return None
 
-
+@cache_function(maxsize=256)
 @log_exceptions_with_args
 def get_processor_function(step_name: str):
     """
@@ -164,7 +166,7 @@ def create_working_dir(dir_path: str) -> str:  # not really used
     Path(working_dir).mkdir(parents=True, exist_ok=True)
     return working_dir
 
-
+@cache_function(maxsize=256)
 @log_exceptions_with_args
 def reflect_to_pipeline_storage(current_dir: str, file_path: str, do_i_move_file:bool = False, result: bool = True) -> None:
     """
@@ -224,7 +226,7 @@ def reflect_to_pipeline_storage(current_dir: str, file_path: str, do_i_move_file
     final_path: Path = rename_file(str(storage_file_path), new_file_name)
     logger.debug(f"Reflected file into pipeline storage: {final_path}")
 
-
+@cache_function(maxsize=256)
 @log_exceptions_with_args
 def process_file(file_path: str) -> None:
     """
@@ -307,7 +309,7 @@ def process_file(file_path: str) -> None:
         logger.error(f"Unexpected error while processing file {file_path}: {e}")
         move_file(file_path, str(error_dir / f"{file_name}.err"))
 
-
+@cache_function(maxsize=256)
 @log_exceptions_with_args
 def handle_processing_error(current_dir: str, original_file: str, working_file: str) -> None:
     """
@@ -338,6 +340,7 @@ def handle_processing_error(current_dir: str, original_file: str, working_file: 
 
     logger.info(f"Processing error detected: {causing_error_file}, {work_error_file}")
 
+@cache_function(maxsize=256)
 @log_exceptions_with_args
 def purge_pipeline_storage():
     """
