@@ -3,7 +3,7 @@ import os  # Provides operating system dependent functionality
 import logging  # Offers logging operations
 import importlib
 import importlib.util # for the absolut path handling
-import sys
+
 from pathlib import Path  # Simplifies file path operations
 from typing import Optional  # Supplies type hinting for optional parameters
 
@@ -11,7 +11,7 @@ from typing import Optional  # Supplies type hinting for optional parameters
 # =================== Local module (project) imports ===================
 from setup import config_setup  # Interfaces with config.ini functionalities
 import setup.logging_setup as logging_setup  # Manages logging configuration
-from utils.file_ops import move_file, copy_file, rename_file  # Provides file operations
+from utils.file_ops import move_file, copy_file, rename_file, create_directory, generate_timestamp  # Provides file operations
 
 
 # Dynamically obtain the logger name from the script name (without extension).
@@ -138,37 +138,54 @@ def create_working_dir(dir_path: str) -> str:
     return working_dir
 
 
-def reflect_to_pipeline_storage(current_dir: str, file_path: str, result: bool) -> None:
+def reflect_to_pipeline_storage(current_dir: str, file_path: str, result: bool = True) -> None:
     """
-    Reflects the file into the appropriate location inside the pipeline storage directory
-    after processing has been completed.
+    Reflect (move and rename) a file into a pipeline storage subdirectory with
+    a timestamp embedded in the new file name. Mirrors the directory structure
+    by including the last portion of the file's original path in the new file name.
 
     Args:
-        current_dir (str): The current pipeline step folder.
-        file_path (str): The full path of the file being processed.
-        result (bool): Indicates if the processing was successful (True) or failed (False).
+        current_dir (str): The directory context in which this file was processed.
+        file_path (str): The full path to the file to be reflected.
+        result (bool): If False, reflection is skipped. If True, proceed.
     """
-    try:
-        # Create and ensure pipeline storage directory for the current folder
-        storage_dir = Path(PIPELINE_STORAGE_DIR) / Path(current_dir).name
-        storage_dir.mkdir(parents=True, exist_ok=True)
+    if not result:
+        logger.debug("Reflection skipped because 'result' is False.")
+        return
 
-        file_name = Path(file_path).name
+    original_path: Path = Path(file_path)
+    if not original_path.is_file():
+        logger.warning(f"File does not exist: {file_path}")
+        return
 
-        if result:
-            # If processing is successful, copy the file as is
-            copy_file(file_path, str(storage_dir))
-            logger.info(f"File successfully reflected to storage: {file_name}")
-        else:
-            # If processing fails, append "_causing_error" to the file name
-            error_file_name = f"{Path(file_path).stem}_causing_error{Path(file_path).suffix}"
-            copy_file(file_path, str(storage_dir))
-            rename_file(str(storage_dir / file_name), error_file_name)
-            logger.info(f"Error file reflected to storage: {error_file_name}")
-    except Exception as e:
-        # Handle any exceptions during reflection
-        logger.error(f"Error reflecting file to pipeline storage: {file_path}. Exception: {e}")
-        raise
+    # 1) Extract the “parent” directory name from the original file’s path
+    #    (this helps capture dynamic provenance).
+    parent_name: str = original_path.parent.name  # e.g., "step3" from ".../step3/file.py"
+    logger.info(f"parent_name {parent_name}")
+
+    # 2) Prepare the pipeline storage subdirectory: we mirror the pipeline structure
+    #    by creating a subdir for the current_dir.
+    #    (Replace this path with your actual config lookup if needed.)
+    pipeline_storage_base: Path = PIPELINE_STORAGE_DIR  # from config
+
+    pipeline_storage_subdir: Path = pipeline_storage_base / current_dir
+    logger.info(f"pipeline_storage_subdir {pipeline_storage_subdir}")
+
+    create_directory(str(pipeline_storage_subdir))
+
+    # 3) Include both the parent directory name and a timestamp in the new file name.
+    timestamp_str: str = generate_timestamp()
+    new_file_name: str = f"{original_path.stem}_{parent_name}_{timestamp_str}{original_path.suffix}"
+    logger.info(f"Generated new file name: {new_file_name}")
+
+    # 4) copy the file into the pipeline storage subdirectory
+    #    and assign a temporary name identical to the original.
+    copy_file_path: Path = move_file(str(original_path), str(pipeline_storage_subdir))
+
+    # 5) Rename the moved file to include subdir + timestamp
+    final_path: Path = rename_file(str(copy_file_path), new_file_name)
+    logger.info(f"Reflected file into pipeline storage: {final_path}")
+
 
 
 def process_file(file_path: str) -> None:
