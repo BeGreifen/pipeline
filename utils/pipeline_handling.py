@@ -1,9 +1,12 @@
 # ==================== Standard library imports ====================
 import os  # Provides operating system dependent functionality
 import logging  # Offers logging operations
-import configparser  # Enables handling of configuration files
+import importlib
+import importlib.util # for the absolut path handling
+import sys
 from pathlib import Path  # Simplifies file path operations
 from typing import Optional  # Supplies type hinting for optional parameters
+
 
 # =================== Local module (project) imports ===================
 from setup import config_setup  # Interfaces with config.ini functionalities
@@ -12,34 +15,38 @@ from utils.file_ops import move_file, copy_file, rename_file  # Provides file op
 
 
 # Dynamically obtain the logger name from the script name (without extension).
-config = config_setup.get_prod_config()
-script_name: str = Path(__file__).stem
-
+SCRIPT_NAME: str = Path(__file__).stem
+PROJECT_ROOT: Path  = Path(__file__).parent.resolve()
 
 # Build the absolute path for the log file
 logs_dir: Path = logging_setup.configure_logs_directory()
-logfile_path = os.path.join(logs_dir, f"{script_name}.log")
+logfile_path = os.path.join(logs_dir, f"{SCRIPT_NAME}.log")
 
 
 # Get the logger instance
 logger = logging_setup.get_logger(
-    logger_name=script_name,
+    logger_name=SCRIPT_NAME,
     logfile_name=logfile_path,
     console_level=logging.INFO,
     file_level=logging.DEBUG
 )
 
 # Load configuration from config.ini
-config = configparser.ConfigParser()
-config.read("config.ini")
+config = config_setup.get_prod_config()
+# config.read("config.ini")
 
-# Configuration parameters
-BASE_DIR: str = config["PIPELINE"].get("base_dir", "")
-PIPELINE_STORAGE_DIR: str = config["PIPELINE"].get("pipeline_storage_dir", "")
-FUNCTION_PREFIX: str = config["PIPELINE"].get("prefix", "pipeline_step_")
-SUCCESS_DIR: str = config["PIPELINE"].get("success_dir", "")
-ERROR_DIR: str = config["PIPELINE"].get("error_dir", "")
 
+# create global Abs Path Constants from Config
+PROCESSES_DIR: Path = Path(config["PIPELINE"].get("processes_dir", "")).resolve()
+logger.info(f"path to processes {PROCESSES_DIR}")
+BASE_DIR: Path = Path(config["PIPELINE"].get("base_dir", "")).parent.resolve()
+PIPELINE_STORAGE_DIR: Path = Path(config["PIPELINE"].get("pipeline_storage_dir", "")).resolve()
+SUCCESS_DIR: Path = Path(config["PIPELINE"].get("success_dir", "")).resolve()
+ERROR_DIR: Path = Path(config["PIPELINE"].get("error_dir", "")).resolve()
+
+# get function parameter from Config
+PROCESS_FILE_PREFIX: str = config["PIPELINE"].get("process_file_prefix", "pipeline_step_")
+PROCESS_FILE_FUNCTION_NAME: str = config["PIPELINE"].get("process_file_function_name", "process_this")
 
 def get_next_dir(current_dir: str) -> Optional[str]:
     """
@@ -69,26 +76,51 @@ def get_next_dir(current_dir: str) -> Optional[str]:
     return None
 
 
-def get_processor_function(dir_name: str):
+def get_processor_function(step_name: str):
     """
-    Dynamically imports and retrieves the processor function for the given folder.
+    Dynamically imports the module for the given step name from the directory
+    specified in the config, then returns the 'process_file' function.
 
     Args:
-        dir_name (str): The name of the folder (e.g., "10_raw_pdf").
+        step_name (str): Name of the step/module to import.
 
     Returns:
-        callable: The processor function.
+        function: The 'process_file' function in the imported module.
 
     Raises:
-        ImportError: If the processor function cannot be found or imported.
+        ImportError: If the module or function can't be found.
     """
-    processor_function_name: str = f"{FUNCTION_PREFIX}{dir_name}"
     try:
-        module_ref = __import__("processors", fromlist=[processor_function_name])
-        return getattr(module_ref, processor_function_name)
+        # Convert relative config path to an absolute path
+        logger.info(f"path to processes {PROCESSES_DIR}")
+
+        # getting process file name and create path
+        process_file_name = f"{PROCESS_FILE_PREFIX}{step_name}.py"
+        process_file_path = Path(PROCESSES_DIR) / Path(process_file_name)
+        logger.info(f"look for {process_file_name} in {PROCESSES_DIR}")
+        logger.info(f" -> {process_file_path}")
+
+
+        try:
+            spec = importlib.util.spec_from_file_location(PROCESS_FILE_FUNCTION_NAME,str(process_file_path))
+            logger.info(f"spec (=processor module) name '{spec.name}' origin {spec.origin} loaded")
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module) #"execute" the module to get all attributes and functions -  this doesn't start any function of the module, just initiates it
+            module_attribs = getattr(module, PROCESS_FILE_FUNCTION_NAME, None)
+            logging.info(f"****** module {module} with attribs {module_attribs} loaded")
+        except (ImportError, ModuleNotFoundError) as err:
+            # Handle or log the exception as needed
+            logger.error(f"Failed to import {PROCESS_FILE_FUNCTION_NAME} from module '{process_file_name}': {err}")
+            raise
+
+        if module is None:
+            raise AttributeError(f"Module '{process_file_name}' has no attribute '{PROCESS_FILE_FUNCTION_NAME}'")
+
+        return module
+
     except (ImportError, AttributeError) as e:
-        logger.error(f"Processor function {processor_function_name} not found: {e}")
-        raise ImportError(f"Processor function {processor_function_name} not found: {e}")
+        raise ImportError(f"Processor function {step_name} not found: {e}") from e
+
 
 
 def create_working_dir(dir_path: str) -> str:
@@ -141,54 +173,77 @@ def reflect_to_pipeline_storage(current_dir: str, file_path: str, result: bool) 
 def process_file(file_path: str) -> None:
     """
     Processes a file through the pipeline with error handling and database mirroring.
-
-    Args:
-        file_path (str): The complete path of the file to be processed.
-
-    Behavior:
-    - Moves the file to a "working" directory for the current step.
-    - Attempts to process the file using the step's dynamic processor function.
-    - On success, moves the file to the next step's folder and reflects it in pipeline storage.
-    - On failure, renames the file indicating the error and reflects failure in pipeline storage.
     """
+
     if not Path(file_path).exists():
         logger.error(f"File does not exist: {file_path}")
         raise FileNotFoundError(f"The file {file_path} does not exist!")
 
-    # Determine current folder and working directory
-    current_dir: str = str(Path(file_path).parent)
-    current_dir_name: str = Path(current_dir).name
-    working_dir: str = create_working_dir(current_dir)
+    # Identify current directory and define subfolders
+    current_dir_path = Path(file_path).parent
+    working_dir = current_dir_path / "working"
+    processed_dir = current_dir_path / "processed"
+    error_dir = current_dir_path / "error"
 
-    # Define paths for the working file
-    working_file_path: str = str(Path(working_dir) / Path(file_path).name)
+    # Create subdirectories if needed
+    working_dir.mkdir(exist_ok=True)
+    processed_dir.mkdir(exist_ok=True)
+    error_dir.mkdir(exist_ok=True)
 
-    try:
-        # Move the file to the working directory
-        move_file(file_path, working_file_path)
+    # Extract just the file name
+    file_name = Path(file_path).name
 
-        # Get and execute the processor function for the current folder
-        processor_func = get_processor_function(current_dir_name)
-        result: bool = processor_func(working_file_path)
+    # try:
+    # 1) Copy the file into the "working" folder
+    #    Pass only the folder to "copy_file"
+    copy_file(file_path, str(working_dir))
 
-        # Reflect the file in pipeline storage
-        reflect_to_pipeline_storage(current_dir, working_file_path, result)
+    # 2) Build the file’s new path after copying
+    working_file_path = working_dir / file_name
 
-        if result:
-            # Move to next folder or success folder
-            next_dir: Optional[str] = get_next_dir(current_dir)
-            if next_dir:
-                move_file(working_file_path, str(Path(next_dir) / Path(file_path).name))
+    # 3) Retrieve & execute the appropriate processor
+    logger.info(f"processing {file_name} in {current_dir_path}")
+    processor_module = get_processor_function(current_dir_path.name)
+    logger.info(f"found processor {processor_module}")
+
+    # execute function from processor_module
+    result = False
+    if processor_module:
+        if hasattr(processor_module, PROCESS_FILE_FUNCTION_NAME):
+            # Retrieve the function object
+            func_to_call = getattr(processor_module, PROCESS_FILE_FUNCTION_NAME)
+            # Optionally, check if it is callable
+            if callable(func_to_call):
+                try:
+                    # Execute the function; pass any parameters as needed.
+                    result = func_to_call()  # or func_to_call(args...) if parameters are required
+                except Exception as e:
+                    print(f"An error occurred while executing {PROCESS_FILE_FUNCTION_NAME}: {e}")
             else:
-                move_file(working_file_path, str(Path(SUCCESS_DIR) / Path(file_path).name))
+                print(f"Attribute {PROCESS_FILE_FUNCTION_NAME} exists but is not callable.")
         else:
-            # Handle processing failure
-            handle_processing_error(current_dir, file_path, working_file_path)
+            print(f"the pipeline process '{current_dir_path.name}' does not have a function named '{PROCESS_FILE_FUNCTION_NAME}'.")
 
-    except Exception as e:
-        # On unexpected errors, ensure the file is moved to the error folder
-        logger.error(f"Unexpected error while processing file {file_path}: {e}")
-        move_file(file_path, str(Path(ERROR_DIR) / Path(file_path).name))
+    # 4) Reflect success/failure in pipeline storage
+    reflect_to_pipeline_storage(str(current_dir_path), str(working_file_path), result)
+
+    if result:
+        # If processing succeeded, move to next or "processed" folder
+        next_dir = get_next_dir(str(current_dir_path))
+        if next_dir:
+            move_file(str(working_file_path), str(next_dir))
+        else:
+            move_file(str(working_file_path), str(processed_dir))
+    else:
+        # If processing failed, move to "error" folder (possibly renaming)
+        move_file(str(working_file_path), str(error_dir / f"{file_name}.err"))
+
+    # except Exception as e:
+        # On any exception, log and move the original file to "error"
+    #    logger.error(f"Unexpected error while processing file {file_path}: {e}")
+    #   move_file(file_path, str(error_dir / f"{file_name}.err"))
+
+
 
 
 def handle_processing_error(current_dir: str, original_file: str, working_file: str) -> None:

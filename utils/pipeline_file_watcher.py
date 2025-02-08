@@ -12,7 +12,7 @@ from typing import Set, List
 # Local imports (adjust as needed for your project)
 from setup import config_setup
 import setup.logging_setup as logging_setup
-import pipeline_handling
+from utils import pipeline_handling
 
 
 class PipelineFileWatcher:
@@ -46,14 +46,14 @@ class PipelineFileWatcher:
         for continuous monitoring. Subfolders are watched concurrently,
         although files within the same folder are processed sequentially.
         """
-        poll_interval = self.config_settings["MAIN"].getint("poll_frequency", fallback=30)
-        base_directory = Path(self.config_settings["PIPELINE"].get("base_dir", ".")).resolve()
+        poll_interval = self.config_settings["PIPELINE"].getint("poll_frequency", fallback=30)
+        pipeline_directory = Path(self.config_settings["PIPELINE"].get("pipeline_dir", ".")).resolve()
 
-        self.logger.info(f"Base directory for pipeline: {base_directory}")
+        self.logger.info(f"Base directory for pipeline: {pipeline_directory}")
         self.logger.info(f"Polling frequency: {poll_interval} seconds")
 
         subfolders = [
-            folder for folder in base_directory.iterdir()
+            folder for folder in pipeline_directory.iterdir()
             if folder.is_dir() and not folder.name.startswith(".")
         ]
 
