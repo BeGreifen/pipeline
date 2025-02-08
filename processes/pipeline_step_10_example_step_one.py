@@ -24,10 +24,13 @@ logger = logging_setup.get_logger(
 
 # Placeholder Python script
 def main(file_path: str):
+    print(f"processing file {file_path}")
+    file_path = Path(file_path).resolve()
+    processed_dir = file_path.parent / "processed/"
     try:
         logging.info(f"process {script_name} started")
         logging.info(f"processing file {file_path}")
-        file_ops.move_file(file_path, "../processed")
+        file_ops.move_file(str(Path(file_path)), str(processed_dir))
         logging.info(f"process {script_name} completed")
         return True
     except Exception as e:
