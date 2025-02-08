@@ -3,6 +3,7 @@ import os  # Provides operating system dependent functionality
 import logging  # Offers logging operations
 import importlib
 import importlib.util # for the absolut path handling
+import functools
 
 from pathlib import Path  # Simplifies file path operations
 from typing import Optional  # Supplies type hinting for optional parameters
@@ -12,6 +13,9 @@ from typing import Optional  # Supplies type hinting for optional parameters
 from setup import config_setup  # Interfaces with config.ini functionalities
 import setup.logging_setup as logging_setup  # Manages logging configuration
 from utils.file_ops import move_file, copy_file, rename_file, create_directory, generate_timestamp  # Provides file operations
+
+# Load configuration from config.ini
+config = config_setup.get_prod_config()
 
 
 # Dynamically obtain the logger name from the script name (without extension).
@@ -31,9 +35,22 @@ logger = logging_setup.get_logger(
     file_level=logging.DEBUG
 )
 
-# Load configuration from config.ini
-config = config_setup.get_prod_config()
-# config.read("config.ini")
+def log_exceptions_with_args(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            # Log the error with function name and parameter details.
+            logger.error(
+                "Exception in function '%s' with args: %s, kwargs: %s",
+                func.__name__,
+                args,
+                kwargs,
+                exc_info=True  # This logs the traceback as well.
+            )
+            raise  # Re-raise the exception after logging.
+    return wrapper
 
 
 # create global Abs Path Constants from Config
@@ -48,6 +65,8 @@ ERROR_DIR: Path = Path(config["PIPELINE"].get("error_dir", "")).resolve()
 PROCESS_FILE_PREFIX: str = config["PIPELINE"].get("process_file_prefix", "pipeline_step_")
 PROCESS_FILE_FUNCTION_NAME: str = config["PIPELINE"].get("process_file_function_name", "process_this")
 
+
+@log_exceptions_with_args
 def get_next_dir(current_dir: str) -> Optional[str]:
     """
     Get the next folder alphabetically in the pipeline.
@@ -76,6 +95,7 @@ def get_next_dir(current_dir: str) -> Optional[str]:
     return None
 
 
+@log_exceptions_with_args
 def get_processor_function(step_name: str):
     """
     Dynamically imports the module for the given step name from the directory
@@ -122,7 +142,7 @@ def get_processor_function(step_name: str):
         raise ImportError(f"Processor function {step_name} not found: {e}") from e
 
 
-
+@log_exceptions_with_args
 def create_working_dir(dir_path: str) -> str:
     """
     Create a working directory inside the given folder if it doesn't already exist.
@@ -138,6 +158,7 @@ def create_working_dir(dir_path: str) -> str:
     return working_dir
 
 
+@log_exceptions_with_args
 def reflect_to_pipeline_storage(current_dir: str, file_path: str, result: bool = True) -> None:
     """
     Reflect (move and rename) a file into a pipeline storage subdirectory with
@@ -187,7 +208,7 @@ def reflect_to_pipeline_storage(current_dir: str, file_path: str, result: bool =
     logger.info(f"Reflected file into pipeline storage: {final_path}")
 
 
-
+@log_exceptions_with_args
 def process_file(file_path: str) -> None:
     """
     Processes a file through the pipeline with error handling and database mirroring.
@@ -220,9 +241,9 @@ def process_file(file_path: str) -> None:
         working_file_path = working_dir / file_name
 
         # 3) Retrieve & execute the appropriate processor
-        logger.info(f"processing {file_name} in {current_dir_path}")
-        processor_module = get_processor_function(current_dir_path.name)
-        logger.info(f"found processor {processor_module}")
+        logger.debug(f"processing {file_name} in {working_file_path}")
+        processor_module = get_processor_function(current_dir_path.name)   # look for module using the current step dir name
+        logger.debug(f"found processor {processor_module}")
 
         # execute function from processor_module
         result = False
@@ -234,7 +255,7 @@ def process_file(file_path: str) -> None:
                 if callable(func_to_call):
                     try:
                         # Execute the function; pass any parameters as needed.
-                        result = func_to_call(file_path)  # or func_to_call(args...) if parameters are required
+                        result = func_to_call(working_file_path)  # or func_to_call(args...) if parameters are required
                     except Exception as e:
                         print(f"An error occurred while executing {PROCESS_FILE_FUNCTION_NAME}: {e}")
                 else:
@@ -262,8 +283,7 @@ def process_file(file_path: str) -> None:
         move_file(file_path, str(error_dir / f"{file_name}.err"))
 
 
-
-
+@log_exceptions_with_args
 def handle_processing_error(current_dir: str, original_file: str, working_file: str) -> None:
     """
     Handles processing errors by renaming files to indicate an error state and
@@ -293,6 +313,7 @@ def handle_processing_error(current_dir: str, original_file: str, working_file: 
 
     logger.info(f"Processing error detected: {causing_error_file}, {work_error_file}")
 
+@log_exceptions_with_args
 def purge_pipeline_storage():
     """
     Deletes all files and folders inside the pipeline storage directory
