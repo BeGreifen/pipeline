@@ -53,15 +53,16 @@ def main(file_path: str):
 
     processed_dir = file_path.parent.parent / "processed/"
     logger.debug(f"file path: {file_path}")
-
     logger.info(f"process {script_name} for {file_path} started")
 
-    logger.debug(f"processing file {file_path} and moving to {processed_dir}")
+
     # code to process file here:
+    # ...
+    logger.debug(f"processing file {file_path} ")
     # ...
     # finally move processed file to the process_dir of the stage
     file_ops.move_file(str(Path(file_path)), str(processed_dir))
-    logger.info(f"process {script_name} completed")
+    logger.info(f"process {script_name} completed and moving to {processed_dir}")
     return True
 
 
