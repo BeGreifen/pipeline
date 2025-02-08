@@ -166,7 +166,7 @@ def create_working_dir(dir_path: str) -> str:  # not really used
 
 
 @log_exceptions_with_args
-def reflect_to_pipeline_storage(current_dir: str, file_path: str, result: bool = True) -> None:
+def reflect_to_pipeline_storage(current_dir: str, file_path: str, do_i_move_file:bool = False, result: bool = True) -> None:
     """
     Reflect (move and rename) a file into a pipeline storage subdirectory with
     a timestamp embedded in the new file name. Mirrors the directory structure
@@ -214,10 +214,14 @@ def reflect_to_pipeline_storage(current_dir: str, file_path: str, result: bool =
 
     # 4) copy the file into the pipeline storage subdirectory
     #    and assign a temporary name identical to the original.
-    copy_file_path: Path = copy_file(str(original_path), str(pipeline_storage_subdir))
+
+    if do_i_move_file:
+        storage_file_path: Path = move_file(str(original_path), str(pipeline_storage_subdir))
+    else:
+        storage_file_path: Path = copy_file(str(original_path), str(pipeline_storage_subdir))
 
     # 5) Rename the moved file to include subdir + timestamp
-    final_path: Path = rename_file(str(copy_file_path), new_file_name)
+    final_path: Path = rename_file(str(storage_file_path), new_file_name)
     logger.debug(f"Reflected file into pipeline storage: {final_path}")
 
 
@@ -279,8 +283,10 @@ def process_file(file_path: str) -> None:
                 print(f"the pipeline process '{current_dir_path.name}' does not have a function named '{PROCESS_FILE_FUNCTION_NAME}'.")
 
         # 4) Reflect success/failure in pipeline storage
-        reflect_to_pipeline_storage(str(current_dir_path), str(file_path), result) # copy step original to pipeline_storage
-        reflect_to_pipeline_storage(str(current_dir_path), str(processed_file_path), result) # copy step result to pipeline_storage
+        reflect_to_pipeline_storage(str(current_dir_path), str(file_path), do_i_move_file=True,
+                                    result=result)  # copy step original to pipeline_storage
+        reflect_to_pipeline_storage(str(current_dir_path), str(processed_file_path), do_i_move_file=False,
+                                    result=result)  # copy step result to pipeline_storage
 
         if result:
             # If processing succeeded, move to next or "processed" folder
@@ -294,7 +300,7 @@ def process_file(file_path: str) -> None:
             error_file_path = str(error_dir / f"{file_name}.err")
             move_file(str(working_file_path), str(error_file_path))
             reflect_to_pipeline_storage(str(current_dir_path), str(processed_file_path),
-                                        result)  # copy step result to pipeline_storage
+                                        result=result)  # copy step result to pipeline_storage
 
     except Exception as e:
         # On any exception, log and move the original file to "error"
