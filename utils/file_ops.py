@@ -68,7 +68,7 @@ def move_file(file_path: str, destination_folder: str) -> Path:
 
         destination_path = destination_folder / file_path.name
         shutil.move(str(file_path), str(destination_path))
-        logger.info(f"Moved file: {file_path} to {destination_path}")
+        logger.debug(f"Moved file: {file_path} to {destination_path}")
         return destination_path
     except Exception as e:
         logger.error(f"Error moving file {file_path} to {destination_folder}: {e}")
@@ -93,7 +93,7 @@ def copy_file(file_path: str, destination_folder: str) -> Path:
 
         destination_path = destination_folder / file_path.name
         shutil.copy(str(file_path), str(destination_path))
-        logger.info(f"Copied file: {file_path} to {destination_path}")
+        logger.debug(f"Copied file: {file_path} to {destination_path}")
         return destination_path
     except Exception as e:
         logger.error(f"Error copying file {file_path} to {destination_folder}: {e}")
@@ -115,7 +115,7 @@ def rename_file(file_path: str, new_name: str) -> Path:
         file_path = Path(file_path)
         new_path = file_path.with_name(new_name)
         file_path.rename(new_path)
-        logger.info(f"Renamed file: {file_path} to {new_path}")
+        logger.debug(f"Renamed file: {file_path} to {new_path}")
         return new_path
     except Exception as e:
         logger.error(f"Error renaming file {file_path} to {new_name}: {e}")
