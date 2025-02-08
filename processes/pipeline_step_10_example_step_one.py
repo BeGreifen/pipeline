@@ -6,7 +6,8 @@ import setup.logging_setup as logging_setup # Function to initialise logger
 from setup import config_setup  # Interfaces with config.ini functionalities
 import random
 import time
-
+from utils.cache_utils import cache_function
+from processes import process_step_mockup
 
 # Dynamically obtain the logger name from the script name (without extension).
 config = config_setup.get_prod_config()
@@ -45,6 +46,7 @@ def log_exceptions_with_args(func):
 
 
 # Placeholder Python script
+@cache_function(maxsize=256)
 @log_exceptions_with_args
 def main(file_path: str):
     print(f"processing file {file_path}")
@@ -61,16 +63,10 @@ def main(file_path: str):
 
     # code to process file here:
     # ...
-    logger.debug(f"processing file {file_path} ")
-    temp_var: int = random.randint(0, 5)
-    logger.debug(f"Waiting for {temp_var} second(s)")
-    # Append a line to the file in file_path indicating the process step and wait time.
-    with open(str(file_path), "a", encoding="utf-8") as temp_file:
-        temp_file.write(f"Process step: waited for {temp_var} second(s)\n")
-    time.sleep(float(temp_var))
+    file_processed_path = process_step_mockup.main(str(file_path))
     # ...
     # finally move processed file to the process_dir of the stage
-    file_ops.move_file(str(Path(file_path)), str(processed_dir))
+    file_ops.move_file(str(Path(file_processed_path)), str(processed_dir))
     logger.info(f"process {script_name} completed and moving to {processed_dir}")
     return True
 

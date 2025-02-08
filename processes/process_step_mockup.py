@@ -1,30 +1,31 @@
 import logging
 import functools
-import utils.file_ops as file_ops
+
 from pathlib import Path
-import setup.logging_setup as logging_setup  # Function to initialise logger
+import setup.logging_setup as logging_setup # Function to initialise logger
 from setup import config_setup  # Interfaces with config.ini functionalities
+import random
+import time
 
 from utils.cache_utils import cache_function
-from processes import process_step_mockup
 
 # Dynamically obtain the logger name from the script name (without extension).
 config = config_setup.get_prod_config()
 script_name: str = Path(__file__).stem
 
+
 # Build the absolute path for the log file
 logs_dir: Path = logging_setup.configure_logs_directory()
 logfile_path: Path = Path(logs_dir, f"{script_name}.log")
 
+
 # Get the logger instance
 logger = logging_setup.get_logger(
-    logger_name=script_name,
-    logfile_name=logfile_path,
-    console_level=logging.INFO,
-    file_level=logging.DEBUG
-)
-
-
+            logger_name=script_name,
+            logfile_name=logfile_path,
+            console_level=logging.INFO,
+            file_level=logging.DEBUG
+        )
 def log_exceptions_with_args(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
@@ -40,7 +41,6 @@ def log_exceptions_with_args(func):
                 exc_info=True  # This logs the traceback as well.
             )
             raise  # Re-raise the exception after logging.
-
     return wrapper
 
 
@@ -48,25 +48,18 @@ def log_exceptions_with_args(func):
 @cache_function(maxsize=256)
 @log_exceptions_with_args
 def main(file_path: str):
-    print(f"processing file {file_path}")
-    print(f"the logs are stored: {logfile_path}")
-    logger.debug(f"logger started")
-
-    file_path = Path(file_path).resolve()
-    logger.debug(f"file path: {file_path}")
-
-    processed_dir = file_path.parent.parent / "processed/"
-    logger.debug(f"file path: {file_path}")
-    logger.info(f"process {script_name} for {file_path} started")
-
     # code to process file here:
     # ...
-    file_processed_path = process_step_mockup.main(str(file_path))
+    logger.debug(f"processing file {file_path} ")
+    temp_var: int = random.randint(0, 5)
+    logger.debug(f"Waiting for {temp_var} second(s)")
+    # Append a line to the file in file_path indicating the process step and wait time.
+    with open(str(file_path), "a", encoding="utf-8") as temp_file:
+        temp_file.write(f"Process step: waited for {temp_var} second(s)\n")
+    time.sleep(float(temp_var))
     # ...
     # finally move processed file to the process_dir of the stage
-    file_ops.move_file(str(Path(file_processed_path)), str(processed_dir))
-    logger.info(f"process {script_name} completed and moving to {processed_dir}")
-    return True
+    return str(temp_file.name)
 
 
 if __name__ == "__main__":
