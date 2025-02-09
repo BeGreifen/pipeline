@@ -86,16 +86,10 @@ def main(file_path: str) -> bool:
         Any exceptions raised during the file processing or file moving operations
         are logged by the @log_exceptions_with_args decorator.
     """
-    print(f"processing file {file_path}")
-    print(f"the logs are stored: {logfile_path}")
-    logger.debug(f"logger started")
-
     file_path = Path(file_path).resolve()
-    logger.debug(f"file path: {file_path}")
-
     processed_dir = file_path.parent.parent / "processed/"
-    logger.debug(f"file path: {file_path}")
-    logger.info(f"process {script_name} for {file_path} started")
+
+    logger.info(f"process {script_name} for {file_path} started, output in {processed_dir}")
 
     # code to process file here:
     # ...
