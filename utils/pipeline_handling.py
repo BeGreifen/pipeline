@@ -318,7 +318,7 @@ def process_file(file_path: str) -> None:
             new_name = f"{error_file_path.stem}_triggered_error{error_file_path.suffix}"
             renamed_path = Path(error_file_path).with_name(new_name)
             error_file_path= error_file_path.rename(renamed_path)
-            logging.info(f"Renamed file to {error_file_path}")
+            logger.info(f"Renamed file to {error_file_path}")
 
             # error_file_path = str(error_dir)
 
