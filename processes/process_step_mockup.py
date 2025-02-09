@@ -94,7 +94,7 @@ def main(file_path: str):
     """
     # For testing purpose, raise an error about every 10th time the function runs
     # Trigger an error with roughly a 1-in-10 chance
-    if random.random() < 0.5:
+    if random.random() < 0.1:
         logger.error(f"Random error triggered (about 1 in 10 chance).{file_path}")
         raise RuntimeError(f"Random error triggered (about 1 in 10 chance).{file_path}")
 

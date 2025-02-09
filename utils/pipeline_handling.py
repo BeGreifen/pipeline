@@ -311,24 +311,42 @@ def process_file(file_path: str) -> None:
                 move_file(str(processed_file_path), str(processed_dir))
         else:
             # If processing failed, move to "error" folder (possibly renaming)
-            move_file(str(working_file_path), str(error_dir))
-            # Create new name, including "_triggered_error" before the extension
-            error_file_path = error_dir / file_name # path of file in error dir
+            # move_working file
+            try:
+                move_file(str(working_file_path), str(error_dir))
+                # Create new name, including "_triggered_error" before the extension
+                error_file_path = error_dir / file_name # path of file in error dir
+    
+                new_name = f"{error_file_path.stem}_working_triggered_error{error_file_path.suffix}"
+                renamed_path = Path(error_file_path).with_name(new_name)
+                error_file_path= error_file_path.rename(renamed_path)
+                logger.info(f"Renamed file to {error_file_path}")
+    
+                # error_file_path = str(error_dir)
+    
+                reflect_to_pipeline_storage(str(current_dir_path), str(error_file_path), do_i_move_file=True,
+                                            result=True)  # copy step result to pipeline_storage
+            except Exception as e:
+                logger.error(f"Unexpected error while processing file {working_file_path}: {e}")
 
-            new_name = f"{error_file_path.stem}_triggered_error{error_file_path.suffix}"
-            renamed_path = Path(error_file_path).with_name(new_name)
-            error_file_path= error_file_path.rename(renamed_path)
-            logger.info(f"Renamed file to {error_file_path}")
+            try:
+                move_file(str(file_path), str(error_dir))
+                # Create new name, including "_triggered_error" before the extension
+                error_file_path = error_dir / file_name  # path of file in error dir
 
-            # error_file_path = str(error_dir)
+                new_name = f"{error_file_path.stem}_original_triggered_error{error_file_path.suffix}"
+                renamed_path = Path(error_file_path).with_name(new_name)
+                error_file_path = error_file_path.rename(renamed_path)
+                logger.info(f"Renamed file to {error_file_path}")
 
-            reflect_to_pipeline_storage(str(current_dir_path), str(error_file_path), do_i_move_file=True,
-                                        result=True)  # copy step result to pipeline_storage
+                reflect_to_pipeline_storage(str(current_dir_path), str(error_file_path), do_i_move_file=True, result=True)
+            except Exception as e:
+                        logger.error(f"Unexpected error while processing file {working_file_path}: {e}")
 
     except Exception as e:
-        # On any exception, log and move the original file to "error"
-        logger.error(f"Unexpected error while processing file {file_path}: {e}")
-        move_file(file_path, str(error_dir / f"{file_name}.err"))
+            # On any exception, log and move the original file to "error"
+            logger.error(f"Unexpected error while processing file {file_path}: {e}")
+            move_file(file_path, str(error_dir / f"{file_name}.err"))
 
 
 @cache_function(maxsize=256)
