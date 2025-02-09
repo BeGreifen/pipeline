@@ -2,31 +2,29 @@
 import os  # Provides operating system dependent functionality
 import logging  # Offers logging operations
 import importlib
-import importlib.util # for the absolut path handling
+import importlib.util  # for the absolut path handling
 import functools
 
 from . import cache_function
 from pathlib import Path  # Simplifies file path operations
 from typing import Optional  # Supplies type hinting for optional parameters
 
-
 # =================== Local module (project) imports ===================
 from setup import config_setup  # Interfaces with config.ini functionalities
 import setup.logging_setup as logging_setup  # Manages logging configuration
-from utils.file_ops import move_file, copy_file, rename_file, create_directory, generate_timestamp  # Provides file operations
+from utils.file_ops import move_file, copy_file, rename_file, create_directory, \
+    generate_timestamp  # Provides file operations
 
 # Load configuration from config.ini
 config = config_setup.get_prod_config()
 
-
 # Dynamically obtain the logger name from the script name (without extension).
 SCRIPT_NAME: str = Path(__file__).stem
-PROJECT_ROOT: Path  = Path(__file__).parent.resolve()
+PROJECT_ROOT: Path = Path(__file__).parent.resolve()
 
 # Build the absolute path for the log file
 logs_dir: Path = logging_setup.configure_logs_directory()
 logfile_path = os.path.join(logs_dir, f"{SCRIPT_NAME}.log")
-
 
 # Get the logger instance
 logger = logging_setup.get_logger(
@@ -35,6 +33,7 @@ logger = logging_setup.get_logger(
     console_level=logging.INFO,
     file_level=logging.DEBUG
 )
+
 
 def log_exceptions_with_args(func):
     @functools.wraps(func)
@@ -51,13 +50,12 @@ def log_exceptions_with_args(func):
                 exc_info=True  # This logs the traceback as well.
             )
             raise  # Re-raise the exception after logging.
-    return wrapper
 
+    return wrapper
 
 
 # create global Abs Path Constants from Config
 PROCESSES_DIR: Path = Path(config["PIPELINE"].get("processes_dir", "")).resolve()
-logger.info(f"path to processes {PROCESSES_DIR}")
 BASE_DIR: Path = Path(config["PIPELINE"].get("base_dir", "")).parent.resolve()
 PIPELINE_DIR: Path = Path(config["PIPELINE"].get("pipeline_dir", "")).resolve()
 PIPELINE_STORAGE_DIR: Path = Path(config["PIPELINE"].get("pipeline_storage_dir", "")).resolve()
@@ -67,6 +65,7 @@ ERROR_DIR: Path = Path(config["PIPELINE"].get("error_dir", "")).resolve()
 # get function parameter from Config
 PROCESS_FILE_PREFIX: str = config["PIPELINE"].get("process_file_prefix", "pipeline_step_")
 PROCESS_FILE_FUNCTION_NAME: str = config["PIPELINE"].get("process_file_function_name", "process_this")
+
 
 @cache_function(maxsize=256)
 @log_exceptions_with_args
@@ -103,6 +102,7 @@ def get_next_dir(original_file_of_this_step_path: str) -> Optional[str]:
         return str(PIPELINE_DIR / sibling_dir[current_index + 1])
     return None
 
+
 @cache_function(maxsize=256)
 @log_exceptions_with_args
 def get_processor_function(step_name: str):
@@ -120,21 +120,17 @@ def get_processor_function(step_name: str):
         ImportError: If the module or function can't be found.
     """
     try:
-        # Convert relative config path to an absolute path
-        logger.debug(f"path to processes {PROCESSES_DIR}")
-
         # getting process file name and create path
         process_file_name = f"{PROCESS_FILE_PREFIX}{step_name}.py"
         process_file_path = Path(PROCESSES_DIR) / Path(process_file_name)
         logger.debug(f"look for {process_file_name} in {PROCESSES_DIR}")
-        logger.debug(f" -> {process_file_path}")
-
 
         try:
-            spec = importlib.util.spec_from_file_location(PROCESS_FILE_FUNCTION_NAME,str(process_file_path))
+            spec = importlib.util.spec_from_file_location(PROCESS_FILE_FUNCTION_NAME, str(process_file_path))
             logger.debug(f"spec (=processor module) name '{spec.name}' origin {spec.origin} loaded")
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module) #"execute" the module to get all attributes and functions -  this doesn't start any function of the module, just initiates it
+            module = importlib.util.module_from_spec(spec) # import step process file with target function
+            spec.loader.exec_module(
+                module)  # "execute" the module to get all attributes and functions -  this doesn't start any function of the module, just initiates it
             module_attribs = getattr(module, PROCESS_FILE_FUNCTION_NAME, None)
             logger.debug(f"module {module} with attribs {module_attribs} loaded")
         except (ImportError, ModuleNotFoundError) as err:
@@ -166,18 +162,33 @@ def create_working_dir(dir_path: str) -> str:  # not really used
     Path(working_dir).mkdir(parents=True, exist_ok=True)
     return working_dir
 
+
 @cache_function(maxsize=256)
 @log_exceptions_with_args
-def reflect_to_pipeline_storage(current_dir: str, file_path: str, do_i_move_file:bool = False, result: bool = True) -> None:
+def reflect_to_pipeline_storage(current_dir: str, file_path: str, do_i_move_file: bool = False,
+                                result: bool = True) -> None:
     """
-    Reflect (move and rename) a file into a pipeline storage subdirectory with
-    a timestamp embedded in the new file name. Mirrors the directory structure
-    by including the last portion of the file's original path in the new file name.
+    Reflect a file to the pipeline storage system while maintaining its provenance and optionally moving
+    or copying the file with a new timestamped file name.
 
-    Args:
-        current_dir (str): The directory context in which this file was processed.
-        file_path (str): The full path to the file to be reflected.
-        result (bool): If False, reflection is skipped. If True, proceed.
+    Parameters:
+        current_dir: str
+            The current directory path of the file being processed.
+        file_path: str
+            The file system path of the file to be reflected into the pipeline storage.
+        do_i_move_file: bool, optional
+            Determines whether the file should be moved (`True`) or copied (`False`).
+            Default is `False`.
+        result: bool, optional
+            Indicates whether to proceed with the reflection process.
+            When `False`, the function skips all operations. Default is `True`.
+
+    Returns:
+        None
+
+    Raises:
+        This function does not explicitly raise exceptions, but errors related to file operations,
+        such as FileNotFoundError or PermissionError, may propagate from the underlying utilities.
     """
     if not result:
         logger.debug("Reflection skipped because 'result' is False.")
@@ -206,10 +217,8 @@ def reflect_to_pipeline_storage(current_dir: str, file_path: str, do_i_move_file
 
     # 3) Include both the parent directory name and a timestamp in the new file name.
     file_status_derived_of_path: str = Path(file_path).parent.name
-    step_name_derived_of_current_dir:str = Path(current_dir).parent.name
     status = file_status_derived_of_path if file_status_derived_of_path != parent_name else ""
 
-        
     timestamp_str: str = generate_timestamp()
     new_file_name: str = f"{original_path.stem}_{status}_{timestamp_str}{original_path.suffix}"
     logger.debug(f"Generated new file name: {new_file_name}")
@@ -225,6 +234,7 @@ def reflect_to_pipeline_storage(current_dir: str, file_path: str, do_i_move_file
     # 5) Rename the moved file to include subdir + timestamp
     final_path: Path = rename_file(str(storage_file_path), new_file_name)
     logger.debug(f"Reflected file into pipeline storage: {final_path}")
+
 
 @cache_function(maxsize=256)
 @log_exceptions_with_args
@@ -262,7 +272,8 @@ def process_file(file_path: str) -> None:
 
         # 3) Retrieve & execute the appropriate processor
         logger.debug(f"processing {file_name} in {working_file_path}")
-        processor_module = get_processor_function(current_dir_path.name)   # look for module using the current step dir name
+        processor_module = get_processor_function(
+            current_dir_path.name)  # look for module using the current step dir name
         logger.debug(f"found processor {processor_module}")
 
         # execute function from processor_module
@@ -276,13 +287,14 @@ def process_file(file_path: str) -> None:
                     try:
                         # Execute the function; pass any parameters as needed.
                         result = func_to_call(working_file_path)  # or func_to_call(args...) if parameters are required
-                        processed_file_path = processed_dir / file_name # create the processed file path
+                        processed_file_path = processed_dir / file_name  # create the processed file path
                     except Exception as e:
                         print(f"An error occurred while executing {PROCESS_FILE_FUNCTION_NAME}: {e}")
                 else:
                     print(f"Attribute {PROCESS_FILE_FUNCTION_NAME} exists but is not callable.")
             else:
-                print(f"the pipeline process '{current_dir_path.name}' does not have a function named '{PROCESS_FILE_FUNCTION_NAME}'.")
+                print(
+                    f"the pipeline process '{current_dir_path.name}' does not have a function named '{PROCESS_FILE_FUNCTION_NAME}'.")
 
         # 4) Reflect success/failure in pipeline storage
         reflect_to_pipeline_storage(str(current_dir_path), str(file_path), do_i_move_file=True,
@@ -308,6 +320,7 @@ def process_file(file_path: str) -> None:
         # On any exception, log and move the original file to "error"
         logger.error(f"Unexpected error while processing file {file_path}: {e}")
         move_file(file_path, str(error_dir / f"{file_name}.err"))
+
 
 @cache_function(maxsize=256)
 @log_exceptions_with_args
@@ -339,6 +352,7 @@ def handle_processing_error(current_dir: str, original_file: str, working_file: 
     reflect_to_pipeline_storage(current_dir, f"{Path(original_file).stem}_causing_error{Path(original_file).suffix}")
 
     logger.info(f"Processing error detected: {causing_error_file}, {work_error_file}")
+
 
 @cache_function(maxsize=256)
 @log_exceptions_with_args
