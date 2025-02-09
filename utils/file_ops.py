@@ -70,7 +70,7 @@ def check_file_is_ready(file_path: str,
         last_size = current_size
 
         if stable_count >= checks:
-            logger.info(f"File '{file_path}' is ready (stable for {checks} consecutive checks).")
+            logger.debug(f"File '{file_path}' is ready (stable for {checks} consecutive checks).")
             return True
         if (time.time() - start_time) > timeout:
             logger.error(f"Timeout: File '{file_path}' did not become stable within {timeout} seconds.")
