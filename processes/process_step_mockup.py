@@ -94,13 +94,14 @@ def main(file_path: str):
     """
     # For testing purpose, raise an error about every 10th time the function runs
     # Trigger an error with roughly a 1-in-10 chance
-    if random.random() < 0.1:
+    if random.random() < 0.5:
+        logger.error(f"Random error triggered (about 1 in 10 chance).{file_path}")
         raise RuntimeError(f"Random error triggered (about 1 in 10 chance).{file_path}")
 
     # code to process file here:
     # ...
     logger.debug(f"processing file {file_path} ")
-    temp_var: int = random.randint(0, 5)
+    temp_var: int = random.randint(0, 0)
     logger.debug(f"Waiting for {temp_var} second(s)")
     # Append a line to the file in file_path indicating the process step and wait time.
     with open(str(file_path), "a", encoding="utf-8") as temp_file:

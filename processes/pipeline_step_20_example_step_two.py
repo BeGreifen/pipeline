@@ -1,5 +1,8 @@
 import logging
 import functools
+import logging
+import functools
+import time
 import utils.file_ops as file_ops
 from pathlib import Path
 import setup.logging_setup as logging_setup  # Function to initialise logger
@@ -93,9 +96,16 @@ def main(file_path: str) -> bool:
 
     # code to process file here:
     # ...
-    file_processed_path = process_step_mockup.main(str(file_path))
-    # ...
-    # finally move processed file to the process_dir of the stage
+    try:
+        start_time = time.time()
+        file_processed_path = process_step_mockup.main(str(file_path))
+        duration = time.time() - start_time
+        logger.info(f"process_step_mockup.main took {duration:.2f} seconds to complete.")
+    except Exception as error:
+        logger.error(f"Error during process_step_mockup.main: {error}")
+        return False
+
+    # Move processed file to the process_dir, if successful
     file_ops.move_file(str(Path(file_processed_path)), str(processed_dir))
     logger.info(f"process {script_name} completed and moving to {processed_dir}")
     return True
@@ -107,3 +117,4 @@ if __name__ == "__main__":
     print("and needs a path to a file to be passed.")
     file_to_be_processed = input("Enter the file path to process: ")
     main(file_to_be_processed)
+
