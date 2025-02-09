@@ -165,16 +165,16 @@ def create_working_dir(dir_path: str) -> str:  # not really used
 
 @cache_function(maxsize=256)
 @log_exceptions_with_args
-def reflect_to_pipeline_storage(current_dir: str, file_path: str, do_i_move_file: bool = False,
+def reflect_to_pipeline_storage(pipeline_step_root_dir: str, Path_of_file_to_be_refelected: str, do_i_move_file: bool = False,
                                 result: bool = True) -> None:
     """
     Reflect a file to the pipeline storage system while maintaining its provenance and optionally moving
     or copying the file with a new timestamped file name.
 
     Parameters:
-        current_dir: str
-            The current directory path of the file being processed.
-        file_path: str
+        pipeline_step_root_dir: str
+            The current directory path of the file being processed to identify the Step of Pipeline.
+        Path_of_file_to_be_refelected: str
             The file system path of the file to be reflected into the pipeline storage.
         do_i_move_file: bool, optional
             Determines whether the file should be moved (`True`) or copied (`False`).
@@ -194,14 +194,14 @@ def reflect_to_pipeline_storage(current_dir: str, file_path: str, do_i_move_file
         logger.debug("Reflection skipped because 'result' is False.")
         return
 
-    original_path: Path = Path(file_path)
+    original_path: Path = Path(Path_of_file_to_be_refelected)
     if not original_path.is_file():
-        logger.warning(f"reflect_to_pipeline_storage file does not exist {file_path}")
+        logger.warning(f"reflect_to_pipeline_storage file does not exist {Path_of_file_to_be_refelected}")
         return
 
     # 1) Extract the “parent” directory name from the original file’s path
     #    (this helps capture dynamic provenance).
-    parent_name: str = Path(current_dir).name  # e.g., "step3" from ".../step3/processed/"
+    parent_name: str = Path(pipeline_step_root_dir).name  # e.g., "step3" from ".../step3/processed/"
     logger.debug(f"parent_name {parent_name}")
 
     # 2) Prepare the pipeline storage subdirectory: we mirror the pipeline structure
@@ -216,7 +216,7 @@ def reflect_to_pipeline_storage(current_dir: str, file_path: str, do_i_move_file
     create_directory(str(pipeline_storage_subdir))
 
     # 3) Include both the parent directory name and a timestamp in the new file name.
-    file_status_derived_of_path: str = Path(file_path).parent.name
+    file_status_derived_of_path: str = Path(Path_of_file_to_be_refelected).parent.name
     status = file_status_derived_of_path if file_status_derived_of_path != parent_name else ""
 
     timestamp_str: str = generate_timestamp()
@@ -321,7 +321,7 @@ def process_file(file_path: str) -> None:
 
             # error_file_path = str(error_dir)
 
-            reflect_to_pipeline_storage(str(error_file_path), str(processed_file_path),
+            reflect_to_pipeline_storage(str(current_dir_path), str(error_file_path),
                                         result=result)  # copy step result to pipeline_storage
 
     except Exception as e:
