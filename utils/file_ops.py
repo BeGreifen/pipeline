@@ -32,33 +32,34 @@ def check_file_is_ready(file_path: str,
                         interval: float = 2.0,
                         timeout: float = 30.0) -> bool:
     """
-    Check if a file is ready for processing by verifying that its size remains
-    constant for a specified number of consecutive checks. This function
-    returns False if the file does not become stable within the given timeout.
+        Checks if a file is ready by verifying that its size has not changed for a specified number of
+        consecutive checks within a given timeout period.
 
-    Args:
-        file_path (str): The path to the file to be checked.
-        checks (int): Number of consecutive stable size checks required.
-        interval (float): Delay (in seconds) between size checks.
-        timeout (float): Maximum time in seconds to wait for the file to be stable in one attempt.
+        The function uses a caching mechanism to optimize frequent calls with identical arguments. If the
+        file's size remains stable for a specified number of consecutive checks, it is considered ready. The
+        function ensures the check respects the provided time interval and stops if the operation exceeds the
+        specified timeout.
 
-    Returns:
-        bool: True if the file is considered ready (size stable), otherwise False.
+        Parameters:
+        file_path (str): Path to the file to check.
+        checks (int): Number of consecutive checks to confirm the file's stability. Default is 3.
+        interval (float): Time interval in seconds between consecutive checks. Default is 2.0.
+        timeout (float): Maximum duration in seconds to wait for the file to become stable. Default is 30.0.
+
+        Returns:
+        bool: True if the file is ready; otherwise, False.
+
+        Raises:
+        None
     """
     start_time = time.time()
     file_path_obj = Path(file_path)
-
     if not file_path_obj.is_file():
         logger.warning(f"File '{file_path}' does not exist or is not a regular file.")
         return False
 
-    temp_var: Path = Path(file_path)
-    if not temp_var.is_file():
-        return False
-
     stable_count = 0
     last_size = os.path.getsize(file_path)
-
     while True:
         time.sleep(interval)
         current_size = os.path.getsize(file_path)
@@ -71,7 +72,6 @@ def check_file_is_ready(file_path: str,
         if stable_count >= checks:
             logger.info(f"File '{file_path}' is ready (stable for {checks} consecutive checks).")
             return True
-
         if (time.time() - start_time) > timeout:
             logger.error(f"Timeout: File '{file_path}' did not become stable within {timeout} seconds.")
             return False
@@ -101,12 +101,13 @@ def wait_until_file_ready(file_path: str,
         bool: True if the file becomes ready within the allowed time, otherwise False.
     """
     start_time = time.time()
-
     while True:
-        if check_file_is_ready(file_path,
-                               checks=readiness_checks,
-                               interval=readiness_interval,
-                               timeout=readiness_timeout):
+        if check_file_is_ready(
+                file_path=file_path,
+                checks=readiness_checks,
+                interval=readiness_interval,
+                timeout=readiness_timeout
+        ):
             return True
 
         elapsed_time = time.time() - start_time
@@ -159,7 +160,6 @@ def move_file(file_path: str, destination_folder: str) -> Path:
         file_path = Path(file_path)
         destination_folder = Path(destination_folder)
         create_directory(str(destination_folder))  # Ensure destination exists
-
         destination_path = destination_folder / file_path.name
         wait_until_file_ready(str(file_path))
         shutil.move(str(file_path), str(destination_path))
@@ -186,7 +186,6 @@ def copy_file(file_path: str, destination_folder: str) -> Path:
         file_path = Path(file_path)
         destination_folder = Path(destination_folder)
         create_directory(str(destination_folder))  # Ensure destination exists
-
         destination_path = destination_folder / file_path.name
         wait_until_file_ready(str(file_path))
         shutil.copy(str(file_path), str(destination_path))
