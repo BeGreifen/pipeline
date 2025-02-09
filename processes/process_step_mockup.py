@@ -101,7 +101,7 @@ def main(file_path: str):
     # code to process file here:
     # ...
     logger.debug(f"processing file {file_path} ")
-    temp_var: int = random.randint(0, 0)
+    temp_var: int = random.randint(0, 2)
     logger.debug(f"Waiting for {temp_var} second(s)")
     # Append a line to the file in file_path indicating the process step and wait time.
     with open(str(file_path), "a", encoding="utf-8") as temp_file:

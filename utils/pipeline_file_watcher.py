@@ -81,22 +81,32 @@ class PipelineFileWatcher:
         """
         # known_files: Dict[Path, float] = {f: f.stat().st_mtime for f in directory_path.iterdir() if f.is_file()}
         known_files: Dict[Path, float] = {}
+        first_run = True  # Flag to track the first execution
+
         while True:
             try:
+                # Get the current state of files in the directory
                 current_files = {f: f.stat().st_mtime for f in directory_path.iterdir() if f.is_file()}
 
-                # Identify new or modified files
-                new_or_modified_files: List[Path] = [
-                    f for f, mtime in current_files.items()
-                    if f not in known_files or known_files[f] < mtime  # File is new or modified
-                ]
+                # On the first run, treat all existing files as "new"
+                if first_run:
+                    new_or_modified_files = list(current_files.keys())  # All existing files are new
+                    self.logger.info(f"Detected {len(new_or_modified_files)} new files in {directory_path} on first run.")
+                    first_run = False  # Disable first-run logic after initial detection
+                else:
+                    # Detect new or modified files
+                    new_or_modified_files = [
+                        f for f, mtime in current_files.items()
+                        if f not in known_files or known_files[f] < mtime  # File is new or modified
+                    ]
 
+                # Process detected files
                 for file_path in new_or_modified_files:
                     self.logger.info(f"New or modified file detected: {file_path}")
                     self._process_file_safely(file_path)
 
-                # Update the known files dictionary
-                known_files = current_files.copy()
+                    # Update the known files dictionary
+                    known_files = current_files.copy()
 
             except Exception as e:
                 self.logger.exception(f"Error monitoring {directory_path}: {e}")
