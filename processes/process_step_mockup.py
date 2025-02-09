@@ -92,6 +92,13 @@ def main(file_path: str):
         Any errors raised during file operations or random delay handling
         will be logged and re-raised by the decorator used on the function.
     """
+    # For testing purpose, raise an error about every 10th time the function runs
+    if not hasattr(main, "_call_count"):
+        main._call_count = 0
+    main._call_count += 1
+    if main._call_count % 10 == 0:
+        raise RuntimeError("Test error triggered every 10th run.")
+
     # code to process file here:
     # ...
     logger.debug(f"processing file {file_path} ")

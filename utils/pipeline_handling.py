@@ -311,9 +311,17 @@ def process_file(file_path: str) -> None:
                 move_file(str(processed_file_path), str(processed_dir))
         else:
             # If processing failed, move to "error" folder (possibly renaming)
-            error_file_path = str(error_dir / f"{file_name}.err")
-            move_file(str(working_file_path), str(error_file_path))
-            reflect_to_pipeline_storage(str(current_dir_path), str(processed_file_path),
+            move_file(str(working_file_path), str(error_dir))
+            # Create new name, including "_triggered_error" before the extension
+            error_file_path = error_dir / file_name
+            new_name = f"{error_file_path.stem}_triggered_error{error_file_path.suffix}"
+            renamed_path = Path(error_file_path).with_name(new_name)
+            error_file_path.rename(renamed_path)
+            logging.info(f"Renamed file to {error_file_path}")
+
+            # error_file_path = str(error_dir)
+
+            reflect_to_pipeline_storage(str(error_file_path), str(processed_file_path),
                                         result=result)  # copy step result to pipeline_storage
 
     except Exception as e:
