@@ -7,7 +7,7 @@ import time
 import threading
 import logging
 from pathlib import Path
-from typing import Set, List
+from typing import Set, List, Dict
 
 # Local imports (adjust as needed for your project)
 from setup import config_setup
@@ -72,29 +72,39 @@ class PipelineFileWatcher:
 
     def _monitor_subfolder(self, directory_path: Path, poll_interval: int) -> None:
         """
-        Monitors a single subfolder for new files at a fixed poll interval.
-        Any new file found is processed.
+        Monitors a single subfolder for new or modified files at a fixed poll interval.
+        Any new or changed file is processed.
 
         Args:
             directory_path (Path): Path to the directory being monitored.
             poll_interval (int): Frequency (in seconds) to check for new files.
         """
-        known_files: Set[Path] = set(directory_path.iterdir())
-
+        # known_files: Dict[Path, float] = {f: f.stat().st_mtime for f in directory_path.iterdir() if f.is_file()}
+        known_files: Dict[Path, float] = {}
         while True:
             try:
-                current_files = set(directory_path.iterdir())
-                new_files: List[Path] = [f for f in current_files - known_files if f.is_file()]
+                current_files = {f: f.stat().st_mtime for f in directory_path.iterdir() if f.is_file()}
 
-                for file_path in new_files:
-                    self.logger.info(f"New file detected: {file_path}")
+                # Identify new or modified files
+                new_or_modified_files: List[Path] = [
+                    f for f, mtime in current_files.items()
+                    if f not in known_files or known_files[f] < mtime  # File is new or modified
+                ]
+
+                for file_path in new_or_modified_files:
+                    self.logger.info(f"New or modified file detected: {file_path}")
                     self._process_file_safely(file_path)
 
-                known_files = current_files
-            except Exception:
-                self.logger.exception(f"Error monitoring {directory_path}")
+                # Update the known files dictionary
+                known_files = current_files.copy()
+
+            except Exception as e:
+                self.logger.exception(f"Error monitoring {directory_path}: {e}")
+
             finally:
                 time.sleep(poll_interval)
+
+
 
     def _process_file_safely(self, file_path: Path) -> None:
         """
