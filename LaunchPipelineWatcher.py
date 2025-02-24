@@ -11,11 +11,9 @@ import setup.logging_setup as logging_setup  # Manages logging configuration
 config = config_setup.get_prod_config()
 script_name: str = Path(__file__).stem
 
-
 # Build the absolute path for the log file
 logs_dir: Path = logging_setup.configure_logs_directory()
 logfile_path = logs_dir / f"{script_name}.log"
-
 
 # Get the logger instance
 logger = logging_setup.get_logger(
@@ -24,6 +22,7 @@ logger = logging_setup.get_logger(
     console_level=logging.INFO,
     file_level=logging.DEBUG
 )
+
 
 def main() -> None:
     """
